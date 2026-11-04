@@ -14,6 +14,7 @@ struct MacVolumeApp: App {
     // Owned by the app, not the window, so taps keep running when the window is closed.
     @StateObject private var permission = PermissionModel()
     @StateObject private var mixer = MixerModel()
+    @StateObject private var loginItem = LoginItemModel()
 
     var body: some Scene {
         WindowGroup("MacVolume") {
@@ -31,5 +32,9 @@ struct MacVolumeApp: App {
         }
         .defaultSize(width: 460, height: 360)
         .windowResizability(.contentMinSize)
+
+        Settings {
+            SettingsView(loginItem: loginItem)
+        }
     }
 }

@@ -24,7 +24,8 @@ final class AudioProcessMonitor: ObservableObject {
     }
 
     private func reload() {
-        let current = (try? AudioProcess.all()) ?? []
+        // A failed read isn't an empty list: treating it as one would drop every tap at once.
+        guard let current = try? AudioProcess.all() else { return }
         let ids = Set(current.map(\.id))
 
         for (id, observer) in playbackObservers where !ids.contains(id) {

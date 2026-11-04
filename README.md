@@ -11,7 +11,12 @@ open build/MacVolume.app
 
 On first use macOS asks for **System Audio Recording** access. If the meters stay at zero,
 check System Settings → Privacy & Security → Screen & System Audio Recording.
-The app is ad-hoc signed, so a rebuild may make macOS ask again.
+The app is ad-hoc signed, so each rebuild resets this: the first tap after a rebuild takes
+3–4 s to start while macOS re-grants access. Later launches start at once. When testing, do one
+throwaway tap run after every rebuild, since a run that builds a second tap during that window hung.
+
+**Launch at login** is in MacVolume → Settings (⌘,). macOS remembers the app's path, so turn it on
+from wherever the app will stay.
 
 Headless probe modes (results go to the `--log` file):
 
@@ -26,6 +31,16 @@ open -n -W build/MacVolume.app --args --probe --groups --log /tmp/groups.log
 open -n -W build/MacVolume.app --args --probe --pid <pid> --gain 0.3 --update-test --log /tmp/upd.log
 # Print the System Audio Recording permission status
 open -n build/MacVolume.app --args --probe --permission --log /tmp/perm.log
+# Play a tapped process into a given device instead of the default output
+open -n -W build/MacVolume.app --args --probe --pid <pid> --output <device uid> --log /tmp/probe.log
+# Move a running tap between two devices and back
+open -n build/MacVolume.app --args --probe --pid <pid> --move-test --output <uid> --output2 <uid> --log /tmp/move.log
+# Change the first device's sample rate and back under a running tap (restores it afterwards)
+open -n build/MacVolume.app --args --probe --pid <pid> --rate-test --output <uid> --output2 <uid> --log /tmp/rate.log
+# Whole mixer on private settings: saved volume, device moves, stall, wake (<bundle id> must be playing)
+open -n build/MacVolume.app --args --probe --mixer-test <bundle id> --output <uid> --output2 <uid> [--other-pid <pid>] [--skip-rate] --log /tmp/mixer.log
+# Register the login item, log the result and unregister it
+open -n build/MacVolume.app --args --probe --login-item --log /tmp/login.log
 ```
 
 ## How it works
@@ -41,7 +56,16 @@ Boost (toolbar) lets sliders reach 200%; above 100% a soft clipper keeps samples
 
 For each app, `ProcessVolumeTap` creates a tap with `.mutedWhenTapped` (the app's normal
 output goes silent while we read it), wraps it in a private aggregate device whose main sub-device
-is the default output, and in the IO callback copies tap → output multiplied by the gain.
+is the default output, and in the IO callback copies tap → output multiplied by the gain. Mono
+outputs get both channels mixed.
+
+`MixerModel` follows the default output. To change device, a tap builds a complete new route (its
+own tap and aggregate), waits for its first IO callback and only then destroys the old one, so the
+app is never left unread and playing at full volume. The same move rebuilds every route after wake,
+and a 3-second check rebuilds any route whose IO has stopped or retries one that failed to move.
+
+Each app's volume, mute state and the Boost toggle are saved in UserDefaults, by bundle ID.
+Command-line processes aren't saved, since their `pid:` keys mean nothing after they exit.
 
 ## Sprint 0 results (2026-11-03, MacBook Pro speakers, macOS 27.2)
 
@@ -83,3 +107,39 @@ Findings:
   rebuilds the tap, and retries a failed app whenever its process set changes.
 - With permission "not determined" taps still receive audio and macOS records the grant, so the
   app only shows the permission screen when access is explicitly denied.
+
+## Sprint 3 results (2026-11-04)
+
+Tested on the test devices below, never on the default output, because Chrome was playing through
+AirPods throughout. Signal checks read a short window after settling, using a −50 dB tone.
+
+| Check | Result |
+|---|---|
+| Saved volume at launch | applied 205–217 ms after launch, out/in 0.300 |
+| Move between devices (Background Music ↔ Microsoft Teams Audio) | out/in unchanged; main thread blocked 42–48 ms; longest IO gap ≤ 50 ms |
+| Device with its own input streams | fixed: out peak 0.0000 → 0.0015 at 50% |
+| Mono output | both channels: right-only 0.0030 → 0.0015 mixed |
+| Rate change on real hardware (speakers, 96 → 48 → 96 kHz) | signal in every 0.5 s sample, no rebuild needed |
+| Stopped IO | detected and rebuilt in 4.0–4.9 s, out/in 0.300 |
+| Wake (simulated notification) | routes rebuilt, longest IO gap 42–45 ms, out/in 0.300 |
+| Saved settings | volume and Boost persist; 100% entries and `pid:` rows aren't stored |
+| Login item | registers ("enabled") and unregisters on this ad-hoc build |
+| CPU with 2 taps | MacVolume 0.39–0.44%; coreaudiod 5.9% → 9.5% in one sample, with Chrome also playing |
+| Real default-output change, real sleep/wake, AirPods call mode, login at boot, Settings window, mute restored after relaunch | _pending manual check_ |
+| No full-volume blip during a device change | _pending manual check_ (a tap reads audio before the mute, so meters can't show it) |
+
+Findings:
+- An aggregate's input list holds its output device's own input streams first and the tap last. The
+  render used to read from the front, so a device with an input played that instead of the app.
+- Destroying an aggregate stops its tap for any other aggregate sharing it: the survivor keeps
+  running but reads silence, about 0.5 s later. A peak over a long window hides this. That's why
+  each route has its own tap.
+- With the Background Music driver at 44.1 kHz (its app not running) a tap can read silence. It
+  didn't happen on the speakers or Teams Audio, so this looks like that driver, not MacVolume.
+- A tap keeps its output device running even when the app is silent (seen on the speakers), so an
+  idle saved app should keep AirPods active while MacVolume runs. In a single check, tapping a
+  process that wasn't playing added no sleep assertion.
+
+Known limits: a `coreaudiod` restart isn't handled (relaunch the app), and audio always goes to the
+default output, even for an app set to a different device.
+
