@@ -46,6 +46,7 @@ final class MixerModel: ObservableObject {
         }
     }
     @Published var error: String?
+    @Published private(set) var outputName = ""
 
     var maximumVolume: Double { boostEnabled ? Self.boostMaximum : 1 }
     var activeTapCount: Int { taps.count }
@@ -65,6 +66,16 @@ final class MixerModel: ObservableObject {
     private let pinnedOutput: Bool
     private var isAsleep = false
     private var hadRouteFailure = false
+
+    /// Sample data for rendering the UI headlessly; touches no audio.
+    init(previewRows: [AppGroup], settings: [String: VolumeSetting], boostEnabled: Bool, outputName: String) {
+        defaults = nil
+        pinnedOutput = true
+        rows = previewRows
+        self.settings = settings
+        self.boostEnabled = boostEnabled
+        self.outputName = outputName
+    }
 
     /// - Parameters:
     ///   - defaults: where settings persist; nil keeps them in memory, so headless tests can
@@ -98,6 +109,7 @@ final class MixerModel: ObservableObject {
             .sink { [weak self] _ in self?.checkRoutes() }
             .store(in: &subscriptions)
         if !pinnedOutput { watchDefaultOutput() }
+        updateOutputName()
         monitor.start()
     }
 
@@ -118,6 +130,7 @@ final class MixerModel: ObservableObject {
     /// Sends every tap to `uid`. Also how headless tests switch a pinned mixer between devices.
     func route(to uid: String) {
         outputUID = uid
+        updateOutputName()
         checkRoutes()
         retryFailedTaps()
     }
@@ -126,6 +139,7 @@ final class MixerModel: ObservableObject {
     private func didWake() {
         isAsleep = false
         if !pinnedOutput, let uid = try? AudioObjectID.defaultOutputUID() { outputUID = uid }
+        updateOutputName()
         checkRoutes(rebuildAll: true)
         retryFailedTaps()
     }
@@ -150,6 +164,11 @@ final class MixerModel: ObservableObject {
             error = nil
         }
         hadRouteFailure = failure != nil
+    }
+
+    private func updateOutputName() {
+        outputName = outputUID.flatMap(AudioObjectID.device(uid:))
+            .flatMap { try? $0.readString(kAudioObjectPropertyName) } ?? ""
     }
 
     private func retryFailedTaps() {

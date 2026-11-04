@@ -5,44 +5,110 @@ struct MixerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.rows.isEmpty {
-                ContentUnavailableView(
-                    "No apps are playing audio",
-                    systemImage: "speaker.wave.2",
-                    description: Text("Play something and it will show up here.")
-                )
-            } else {
-                List(model.rows) { row in
-                    AppRowView(
-                        row: row,
-                        setting: model.setting(for: row),
-                        maximumVolume: model.maximumVolume,
-                        setVolume: { model.setVolume($0, for: row) },
-                        toggleMute: { model.toggleMute(row) }
-                    )
-                }
-                .listStyle(.inset(alternatesRowBackgrounds: false))
-            }
+            titleStrip
+            displayPanel
+            rowsPanel
+            if let error = model.error { errorBanner(error) }
+        }
+        .frame(minWidth: 430, minHeight: 250)
+        .background(Skin.chrome)
+        .ignoresSafeArea()
+        .preferredColorScheme(.dark)
+    }
 
-            if let error = model.error {
-                HStack(alignment: .firstTextBaseline) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
-                    Text(error).textSelection(.enabled)
-                    Spacer()
-                    Button("Dismiss") { model.error = nil }
+    /// Sits under the hidden title bar, so the window can be dragged by it.
+    private var titleStrip: some View {
+        HStack(spacing: 10) {
+            Grooves()
+            LogoMark()
+            DotText(text: "MacVolume", color: Skin.amber, dot: 1.5, gap: 0.5)
+            Grooves()
+        }
+        .padding(.leading, 76)
+        .padding(.trailing, 10)
+        .frame(height: 30)
+        .background(Skin.chromeLight)
+        .bevel()
+    }
+
+    private var displayPanel: some View {
+        HStack(spacing: 8) {
+            Marquee(text: displayText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .background(Skin.display)
+                .bevel(raised: false)
+
+            Button { model.boostEnabled.toggle() } label: {
+                HStack(spacing: 5) {
+                    Lamp(isOn: model.boostEnabled, color: Skin.red)
+                    Text("BOOST").font(Skin.label(10)).foregroundStyle(model.boostEnabled ? Skin.red : .white.opacity(0.75))
                 }
-                .font(.callout)
-                .padding(10)
-                .background(.bar)
             }
-        }
-        .frame(minWidth: 400, minHeight: 200)
-        .toolbar {
-            Toggle(isOn: $model.boostEnabled) {
-                Label("Boost", systemImage: "speaker.plus")
-            }
+            .buttonStyle(SkinButtonStyle())
             .help(model.boostEnabled ? "Sliders go up to 200%" : "Let sliders go up to 200%")
+            .accessibilityLabel("Boost")
+            .accessibilityValue(model.boostEnabled ? "On" : "Off")
         }
+        .padding(8)
+    }
+
+    private var displayText: String {
+        let count = model.rows.count
+        let apps = count == 0 ? "No apps playing" : count == 1 ? "1 app" : "\(count) apps"
+        return model.outputName.isEmpty ? apps : "\(apps) *** Out: \(model.outputName)"
+    }
+
+    @ViewBuilder
+    private var rowsPanel: some View {
+        Group {
+            if model.rows.isEmpty {
+                VStack(spacing: 10) {
+                    DotText(text: "No signal", color: Skin.amber, dot: 2.5, gap: 0.5)
+                    Text("Play something and it will show up here.")
+                        .font(Skin.label(11))
+                        .foregroundStyle(Skin.green.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 4) {
+                        ForEach(model.rows) { row in
+                            AppRowView(
+                                row: row,
+                                setting: model.setting(for: row),
+                                maximumVolume: model.maximumVolume,
+                                setVolume: { model.setVolume($0, for: row) },
+                                toggleMute: { model.toggleMute(row) }
+                            )
+                        }
+                    }
+                    .padding(4)
+                }
+            }
+        }
+        .background(Skin.bevelShadow.opacity(0.6))
+        .bevel(raised: false)
+        .padding([.horizontal, .bottom], 8)
+    }
+
+    private func errorBanner(_ error: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Lamp(isOn: true, color: Skin.amber)
+            Text(error)
+                .font(Skin.label(11))
+                .foregroundStyle(Skin.amber)
+                .textSelection(.enabled)
+            Spacer()
+            Button { model.error = nil } label: {
+                Text("DISMISS").font(Skin.label(10)).foregroundStyle(.white.opacity(0.75))
+            }
+            .buttonStyle(SkinButtonStyle())
+        }
+        .padding(8)
+        .background(Skin.display)
+        .bevel(raised: false)
+        .padding([.horizontal, .bottom], 8)
     }
 }
 
@@ -54,42 +120,55 @@ struct AppRowView: View {
     let toggleMute: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
+            Lamp(isOn: row.isPlaying)
+
             Image(nsImage: row.identity.icon)
                 .resizable()
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.identity.name)
+                    .font(Skin.label(12))
+                    .foregroundStyle(.white.opacity(0.92))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(row.isPlaying ? "Playing" : "Paused")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(row.isPlaying ? "PLAYING" : "PAUSED")
+                    .font(Skin.label(9))
+                    .foregroundStyle(row.isPlaying ? Skin.green : .white.opacity(0.45))
             }
-            .frame(width: 130, alignment: .leading)
+            .frame(width: 112, alignment: .leading)
 
             Button(action: toggleMute) {
                 Image(systemName: speakerSymbol)
-                    .frame(width: 20)
-                    .foregroundStyle(setting.isMuted ? .red : .primary)
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 16)
+                    .foregroundStyle(setting.isMuted ? Skin.red : .white.opacity(0.85))
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(SkinButtonStyle())
             .help(setting.isMuted ? "Unmute" : "Mute")
             .accessibilityLabel(setting.isMuted ? "Unmute \(row.identity.name)" : "Mute \(row.identity.name)")
 
-            Slider(value: Binding(get: { min(setting.volume, maximumVolume) }, set: setVolume), in: 0...maximumVolume) {
-                Text("\(row.identity.name) volume")
-            }
-            .labelsHidden()
+            LEDSlider(
+                value: Binding(get: { min(setting.volume, maximumVolume) }, set: setVolume),
+                maximum: maximumVolume,
+                isMuted: setting.isMuted,
+                label: "\(row.identity.name) volume"
+            )
 
-            Text("\(Int((setting.volume * 100).rounded()))%")
-                .monospacedDigit()
-                .foregroundStyle(setting.isMuted ? AnyShapeStyle(.secondary) : setting.volume > 1 ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
-                .frame(width: 44, alignment: .trailing)
+            DotText(text: "\(Int((setting.volume * 100).rounded()))%", color: percentColor)
+                .frame(width: 50, alignment: .trailing)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Skin.chrome)
+        .bevel()
+    }
+
+    private var percentColor: Color {
+        if setting.isMuted { return Skin.bevelHighlight }
+        return setting.volume > 1 ? Skin.red : Skin.green
     }
 
     private var speakerSymbol: String {

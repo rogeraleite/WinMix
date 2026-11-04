@@ -12,8 +12,9 @@ open build/MacVolume.app
 On first use macOS asks for **System Audio Recording** access. If the meters stay at zero,
 check System Settings → Privacy & Security → Screen & System Audio Recording.
 The app is ad-hoc signed, so each rebuild resets this: the first tap after a rebuild takes
-3–4 s to start while macOS re-grants access. Later launches start at once. When testing, do one
-throwaway tap run after every rebuild, since a run that builds a second tap during that window hung.
+3–4 s to start while macOS re-grants access. Later launches start at once. When testing, quit the
+running app and do one throwaway tap run after every rebuild: runs that built a second tap during
+that window, or started while the old build was still running, hung.
 
 **Launch at login** is in MacVolume → Settings (⌘,). macOS remembers the app's path, so turn it on
 from wherever the app will stay.
@@ -41,6 +42,18 @@ open -n build/MacVolume.app --args --probe --pid <pid> --rate-test --output <uid
 open -n build/MacVolume.app --args --probe --mixer-test <bundle id> --output <uid> --output2 <uid> [--other-pid <pid>] [--skip-rate] --log /tmp/mixer.log
 # Register the login item, log the result and unregister it
 open -n build/MacVolume.app --args --probe --login-item --log /tmp/login.log
+```
+
+## Look
+
+The window is a retro hardware skin: gunmetal panels, a scrolling dot-matrix display and segmented
+LED sliders (`Skin.swift`). The display holds still while the app is in the background. The logo is
+drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
+
+To check the look without opening the app or touching audio, render the window to PNGs:
+
+```sh
+.build/release/MacVolume --probe --render-preview /tmp/mixer
 ```
 
 ## How it works

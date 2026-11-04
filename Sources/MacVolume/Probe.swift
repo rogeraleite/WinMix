@@ -1,6 +1,7 @@
 import AppKit
 import CoreAudio
 import ServiceManagement
+import SwiftUI
 
 /// Headless test mode: taps one process for a few seconds and logs what the engine sees.
 ///
@@ -36,6 +37,9 @@ enum Probe {
                 log("\(name) [\(key)]: " + members.map { "\($0.bundleID.isEmpty ? "pid \($0.pid)" : $0.bundleID)\($0.isPlaying ? " ▶︎" : "")" }.joined(separator: ", "))
             }
             return 0
+        }
+        if let path = value("--render-preview") {
+            return MainActor.assumeIsolated { renderPreview(to: path, log: log) }
         }
         if arguments.contains("--login-item") {
             return loginItemTest(log: log)
@@ -170,6 +174,42 @@ enum Probe {
             log("error: \(error.localizedDescription)")
             return 1
         }
+    }
+
+    /// Renders the mixer window to PNGs with sample rows, so the look can be checked headlessly.
+    @MainActor
+    private static func renderPreview(to path: String, log: (String) -> Void) -> Int32 {
+        _ = NSApplication.shared
+        func row(_ bundleID: String, playing: Bool) -> AppGroup {
+            AppGroup(key: bundleID, identity: ProcessIdentity(pid: -1, bundleID: bundleID),
+                     processes: [AudioProcess(id: 1, pid: 1, bundleID: bundleID, isPlaying: playing)])
+        }
+        let rows = [row("com.google.Chrome", playing: true), row("com.microsoft.teams2", playing: false),
+                    row("com.apple.Music", playing: true), row("net.whatsapp.WhatsApp", playing: true)]
+        let settings = ["com.google.Chrome": VolumeSetting(volume: 0.3),
+                        "com.microsoft.teams2": VolumeSetting(volume: 0.8, isMuted: true),
+                        "com.apple.Music": VolumeSetting(volume: 1),
+                        "net.whatsapp.WhatsApp": VolumeSetting(volume: 1.6)]
+        let states: [(String, MixerModel)] = [
+            ("normal", MixerModel(previewRows: rows, settings: settings.mapValues { var s = $0; s.volume = min(s.volume, 1); return s }, boostEnabled: false, outputName: "Roger’s AirPods Pro #2")),
+            ("boost", MixerModel(previewRows: rows, settings: settings, boostEnabled: true, outputName: "MacBook Pro Speakers")),
+            ("empty", MixerModel(previewRows: [], settings: [:], boostEnabled: false, outputName: "MacBook Pro Speakers")),
+        ]
+        for (name, model) in states {
+            let size = NSSize(width: 480, height: 340)
+            let view = NSHostingView(rootView: MixerView(model: model).frame(width: size.width, height: size.height))
+            view.frame = NSRect(origin: .zero, size: size)
+            let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.contentView = view
+            view.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return 1 }
+            view.cacheDisplay(in: view.bounds, to: bitmap)
+            let file = "\(path)-\(name).png"
+            FileManager.default.createFile(atPath: file, contents: bitmap.representation(using: .png, properties: [:]))
+            log("wrote \(file)")
+        }
+        return 0
     }
 
     /// Registers the login item, logs the result and always unregisters it again.

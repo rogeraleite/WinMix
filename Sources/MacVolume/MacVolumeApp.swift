@@ -30,7 +30,8 @@ struct MacVolumeApp: App {
                 permission.refresh()
             }
         }
-        .defaultSize(width: 460, height: 360)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 480, height: 340)
         .windowResizability(.contentMinSize)
 
         Settings {
