@@ -7,11 +7,13 @@
   const prototype = HTMLMediaElement.prototype;
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "volume");
   const nativePlay = prototype.play;
+  const nativePause = prototype.pause;
   let bridgeID, scheduled = false;
   const listeners = new WeakSet(), observedRoots = new WeakSet();
-  function announce(requestID) {
+  function announce(requestID, error) {
     if (!bridgeID) return;
-    window.postMessage({ channel, direction: "page", bridgeID, requestID, state: controller.state() }, location.origin);
+    window.postMessage({ channel, direction: "page", bridgeID, requestID, state: controller.state(),
+      ...(error ? { error } : {}) }, location.origin);
   }
   function changed() {
     if (scheduled) return;
@@ -21,7 +23,10 @@
   const controller = new Controller({
     getVolume: element => descriptor.get.call(element),
     setVolume: (element, value) => descriptor.set.call(element, value),
-    isPlaying: element => !element.paused && !element.ended && !element.muted && element.readyState >= 2,
+    isPlaying: element => !element.paused && !element.ended,
+    isAudible: element => !element.muted && element.readyState >= 2,
+    canPlay: element => element.isConnected && !element.ended && Boolean(element.currentSrc || element.src || element.srcObject),
+    play: element => nativePlay.call(element), pause: element => nativePause.call(element),
     changed
   });
   function track(element) {
@@ -29,6 +34,7 @@
     if (listeners.has(element)) return;
     listeners.add(element);
     element.addEventListener("volumechange", () => { controller.observeNativeChange(element); changed(); });
+    element.addEventListener("playing", () => controller.notePlaying(element));
     for (const event of ["play", "playing", "pause", "ended", "emptied", "loadeddata"]) element.addEventListener(event, changed);
   }
   Object.defineProperty(prototype, "volume", {
@@ -62,13 +68,18 @@
   Element.prototype.attachShadow = function (...args) {
     const root = attachShadow.apply(this, args); observe(root); return root;
   };
-  window.addEventListener("message", event => {
+  window.addEventListener("message", async event => {
     const message = event.data;
     if (event.source !== window || event.origin !== location.origin || message?.channel !== channel || message.direction !== "bridge") return;
     if (typeof message.bridgeID !== "string" || message.bridgeID.length > 80) return;
     if (message.type === "init") bridgeID = message.bridgeID;
     if (message.bridgeID !== bridgeID) return;
-    if (message.type === "set" || message.type === "init") {
+    if (message.type === "playback") {
+      if (!["play", "pause"].includes(message.action) || typeof message.allowFallback !== "boolean") return;
+      try { await controller.setPlayback(message.action, message.allowFallback); announce(message.requestID); }
+      catch (error) { announce(message.requestID, String(error.message).slice(0, 512)); }
+      return;
+    } else if (message.type === "set" || message.type === "init") {
       try { controller.setGain(message.volume); } catch { return; }
     } else if (message.type === "reset") controller.reset();
     else if (message.type !== "state") return;
