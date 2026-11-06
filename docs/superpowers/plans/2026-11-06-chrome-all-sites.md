@@ -35,8 +35,13 @@ tabs e separar ganho confirmado de ganho solicitado; uma requisição por aba co
 Execução nesta sessão, em sequência. Reutilizar fixtures e testes de transporte existentes.
 
 Validação: 17 Swift + 17 JavaScript + 2 Python; integrações simulada/nativa aprovadas.
-Ativação no perfil pessoal depende da concessão de acesso pelo usuário.
+Ativação no perfil pessoal concluída após autorização explícita do usuário.
 
 App 0.5.0 instalado e aberto em `build/MacVolume.app`; bundle 0.4.0 preservado em
 `build/MacVolume.backup-0.4.0-01e91eb.app`. A interface real confirmou
 `Extension update required` com a extensão pessoal ainda antiga.
+
+Após autorização, extensão pessoal atualizada de 0.2.1 para 0.5.0, **On all sites**
+confirmado e modo automático conectado. Duas abas reais do YouTube apareceram sem
+recarregar as páginas, com ganhos independentes de 30% e 70% e pausa pelo app.
+Ao terminar, ambas foram restauradas para ganho de 100% e reprodução pausada.

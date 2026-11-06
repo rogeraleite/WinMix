@@ -1,7 +1,8 @@
 # Validação no Chrome pessoal — 0.5.0
 
 Atualizado em 2026-11-06. As fixtures automatizadas usam perfil separado; não substituem
-esta validação em serviços reais. A extensão pessoal ainda precisa receber o novo acesso.
+esta validação em serviços reais. Extensão pessoal 0.5.0 recarregada após autorização
+do usuário, com **On all sites** confirmado e conexão no modo novo.
 
 ## Ativação
 
@@ -14,11 +15,12 @@ esta validação em serviços reais. A extensão pessoal ainda precisa receber o
 
 | Cenário | Resultado esperado | Estado |
 | --- | --- | --- |
-| Duas abas reais em sites distintos | Duas linhas e ganhos independentes, sem abrir popup. | Pendente após concessão de acesso. |
+| Duas abas reais do YouTube | Duas linhas e ganhos independentes, sem abrir popup. | Aprovado: 30% e 70% confirmados; ganhos restaurados a 100% ao terminar. |
+| Duas abas reais em sites distintos | Duas linhas e ganhos independentes, sem abrir popup. | Fixtures aprovadas; confirmar outros serviços reais. |
 | Arraste contínuo | Slider permanece ativo; valor final é confirmado. | Testado no modelo/fixtures; falta gesto na sessão pessoal. |
-| Abas já abertas e nova aba em segundo plano | Descoberta automática ao tocar áudio. | Confirmar no perfil pessoal após atualizar. |
+| Abas já abertas e nova aba em segundo plano | Descoberta automática ao tocar áudio. | Duas abas existentes do YouTube aprovadas, sem recarga das páginas. Nova aba em segundo plano coberta por fixtures. |
 | Volume no site + volume da aba | Ganhos multiplicados uma vez, sem acumular. | Confirmar com os players reais. |
-| Pausa/mute/ganho zero | Linha permanece; play/pause não altera volume/mute. | Confirmar nos serviços reais. |
+| Pausa/mute/ganho zero | Linha permanece; play/pause não altera volume/mute. | Pausa pelo app e retenção das duas linhas aprovadas no YouTube real. Mute/ganho zero permanecem cobertos por fixtures. |
 | Sem acesso ao site | Aba audível com diagnóstico e mute; sem falso slider. | Confirmar ao reter acesso no Chrome pessoal. |
 | Web Audio sem HTML audio/video | Diagnóstico de volume indisponível, mute funciona. | Caso negativo em fixture; confirmar variantes reais. |
 | Página interna/Web Store/arquivo | Sem promessa de slider funcional; sem injeção nesses contextos. | Escopo coberto por teste; audibilidade depende da página. |

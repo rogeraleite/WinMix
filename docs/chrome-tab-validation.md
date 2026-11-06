@@ -15,7 +15,7 @@ em HTTP/HTTPS, com diagnóstico e mute para áudio sem player compatível.
 | Integração com app simulado | Aprovada, extensão e ponte reais em perfil temporário. |
 | Integração com modelos nativos/Core Audio | Aprovada em saída explícita Microsoft Teams Audio. |
 | Interface | Preview conectado inspecionado; sliders, percentuais e mensagens sem cortes. |
-| Chrome pessoal e serviços reais | Aguardam recarga da extensão e novo acesso aos sites pelo usuário. |
+| Chrome pessoal | Extensão 0.5.0 ativa, acesso On all sites e modo novo conectado. Dois sliders de abas reais do YouTube confirmados em 30% e 70%. |
 
 ## Evidências
 
@@ -67,7 +67,21 @@ App 0.5.0 instalado e aberto no caminho já registrado `build/MacVolume.app`. A 
 0.4.0 foi preservada em `build/MacVolume.backup-0.4.0-01e91eb.app`. Os arquivos da
 extensão empacotada conferem byte a byte com `Extensions/Chrome`. A interface real
 mostrou **Extension update required** com a extensão pessoal antiga ainda conectada.
-Nenhuma ampliação de acesso no perfil pessoal foi concedida automaticamente.
+Após autorização explícita do usuário, a extensão foi recarregada no Chrome pessoal,
+mantendo o ID e a pasta original. O cartão passou de 0.2.1 para 0.5.0 e os detalhes
+confirmaram **On all sites**. O MacVolume passou a mostrar os controles automáticos.
+
+## Verificação na sessão pessoal
+
+Duas abas já abertas do YouTube foram iniciadas brevemente. Ambas apareceram com slider
+próprio sem recarga das páginas nem popup. Pela interface nativa, a primeira recebeu
+30% e permaneceu nesse ganho quando a segunda foi ajustada para 70%. A pausa pelo app
+funcionou e as linhas permaneceram disponíveis. Ao terminar, os ganhos foram restaurados
+a 100% e ambas as abas ficaram pausadas, como no início. O mestre permaneceu em 100%.
+
+Essa verificação confirma descoberta, valores confirmados independentes e pausa em duas
+abas reais do mesmo serviço. Não mede ganho acústico, não testa o gesto de arraste contínuo
+e não aprova automaticamente os demais cenários do roteiro manual.
 
 ## Limites e ativação
 
@@ -76,7 +90,7 @@ páginas internas ou Web Store. Em páginas com fontes mistas, o ganho HTML não
 cobertura de todo áudio. Não foi validado o piso Chrome 116/macOS 14.4 neste equipamento.
 
 Reabrir o app 0.5.0, recarregar MacVolume Tabs em `chrome://extensions` e autorizar o
-acesso HTTP/HTTPS e `tabs`. A concessão pessoal deve ser feita pelo usuário. O app mostra
+acesso HTTP/HTTPS e `tabs`. A ampliação de acesso requer autorização do usuário. O app mostra
 **Extension update required** enquanto a extensão antiga continuar conectada. Conferir
 serviços reais, permissões retidas, suspensão, chamadas e falhas abruptas pelo
 [roteiro manual](chrome-manual-validation.md).
