@@ -84,11 +84,13 @@ appearance keeps the same live audio controls and volume settings.
 The **?** button opens an in-app Chrome extension installation guide, with shortcuts to the
 bundled extension folder, Chrome's extensions page, and a safely quoted connection command for
 your extension ID and current app path. The same guide is available in Settings and Chrome Setup.
+Browser rows show distinct YouTube and YouTube Music icons in either appearance, with a globe
+for other sites.
 
 Retro keeps its gunmetal panels, scrolling dot-matrix display and segmented LED sliders
-(`Skin.swift`). The display holds still while the app is in the background. The Ceramic speaker-cone
+(`Skin.swift`). The display holds still while the app is in the background. The original LED-case
 logo is drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
-Use `--style retro` to export the original icon instead.
+Use `--style ceramic` to export the alternative speaker-cone icon.
 The same script exports the Chrome extension icons at 16, 32, 48 and 128 pixels. Use
 `python3 scripts/make-icon.py --chrome-only` to regenerate only those PNGs, then reload the
 unpacked extension in Chrome to refresh its toolbar and extension-manager icons.

@@ -23,3 +23,14 @@ The Ceramic sliders use cobalt tracks, ceramic handles, arrow-key adjustment, fo
 - Reopened the installed app, confirmed automatic reconnection to the existing Chrome extension, and observed both playing and paused browser tabs with their capability-appropriate controls. Left the app open with Ceramic selected.
 
 Live gain, mute and playback actions were not exercised during this UI validation. Their existing model tests passed; no audio/browser model implementation or host registration was changed.
+
+## 0.6.1 — service icons and original app identity
+
+Owner requested distinct YouTube/YouTube Music icons in either style and restoration of the prior main icon. Added local SwiftUI service marks selected by hostname: YouTube's red rounded play mark, YouTube Music's red circular ring/play mark, and a globe for other hosts. No network icon loading or browser protocol changes are needed.
+
+- `swift test`: 19 tests, zero failures (`build/ceramic-validation/icon-tests.log`).
+- Production build and strict signature verification passed for `build/icon-validation/MacVolume.app` and the updated `build/MacVolume.app`.
+- Rendered previews include both services; inspected connected-tab rows in Ceramic and Retro for icon distinction and label alignment (`build/icon-validation/previews/`).
+- The restored `Resources/AppIcon.icns` and extension icon PNGs match the pre-Ceramic originals from commit `6509bfc`; verified SHA-256 equality for the main icon and 128px extension icon.
+- Reopened the installed 0.6.1 app with the existing Retro selection and saved Chrome gain preserved. Retained the prior app in `build/MacVolume.backup-0.6.0-before-site-icons.app`.
+- Confirmed the live Chrome connection and distinct accessible YouTube/YouTube Music images beside their corresponding real tabs.

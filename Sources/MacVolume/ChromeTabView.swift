@@ -95,6 +95,7 @@ private struct ChromeTabRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 if !isCeramic { Lamp(isOn: connected && tab.audible) }
+                BrowserTabIcon(domain: tab.domain, appearance: appearance)
                 Text(tab.title)
                     .font(isCeramic ? .system(size: 11, weight: .medium) : Skin.label(11))
                     .lineLimit(1).help(tab.title)

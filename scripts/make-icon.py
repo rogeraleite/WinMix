@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draws the MacVolume logo for macOS and Chrome. Needs Pillow and macOS iconutil.
 
-The Ceramic speaker cone is the default; --style retro preserves the original LED case.
+The original LED case is the default; --style ceramic exports the speaker-cone variant.
 """
 import argparse
 import pathlib
@@ -112,7 +112,7 @@ def draw_ceramic_logo():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chrome-only", action="store_true", help="Export Chrome PNGs without changing the macOS icon")
-    parser.add_argument("--style", choices=("ceramic", "retro"), default="ceramic", help="Icon appearance (default: ceramic)")
+    parser.add_argument("--style", choices=("ceramic", "retro"), default="retro", help="Icon appearance (default: retro)")
     args = parser.parse_args()
     root = pathlib.Path(__file__).resolve().parent.parent
     logo = draw_ceramic_logo() if args.style == "ceramic" else draw_logo()
