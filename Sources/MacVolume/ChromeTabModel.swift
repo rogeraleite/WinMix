@@ -50,7 +50,7 @@ final class ChromeTabModel: ObservableObject {
             ? "Chrome connected · YouTube and YouTube Music are automatic."
             : "Chrome connected · Reload MacVolume Tabs once to enable automatic YouTube controls."
         if let request = message.requestID { pending = pending.filter { $0.value != request } }
-        let alive = Set(newTabs.filter { $0.controlled || $0.canMute == true }.map(\.id))
+        let alive = Set(newTabs.filter { $0.controlled || $0.canMute == true || $0.canPlay == true || $0.canPause == true }.map(\.id))
         pending = pending.filter { alive.contains($0.key) }
         server?.send(BridgeMessage(type: "ready", session: newSession))
     }
@@ -69,17 +69,30 @@ final class ChromeTabModel: ObservableObject {
 
     func toggleMute(_ tab: ChromeTab) { send(tab, volume: tab.volume, muted: !tab.muted) }
 
+    func setPlayback(_ action: String, for tab: ChromeTab) {
+        guard (action == "play" && tab.canPlay == true) || (action == "pause" && tab.canPause == true) else { return }
+        sendRequest(for: tab) { session, request in
+            BridgeMessage(type: "playback", session: session, requestID: request, tabID: tab.id, action: action)
+        }
+    }
+
     private func send(_ tab: ChromeTab, volume: Double, muted: Bool) {
-        guard connected, tab.controlled || tab.canMute == true, pending[tab.id] == nil, let session, volume.isFinite else { return }
+        guard tab.controlled || tab.canMute == true, volume.isFinite else { return }
+        sendRequest(for: tab) { session, request in
+            BridgeMessage(type: "set", session: session, requestID: request, tabID: tab.id, volume: volume, muted: muted)
+        }
+    }
+
+    private func sendRequest(for tab: ChromeTab, message: (String, String) -> BridgeMessage) {
+        guard connected, pending[tab.id] == nil, let session else { return }
         let request = UUID().uuidString
         pending[tab.id] = request
         error = nil
-        server?.send(BridgeMessage(type: "set", session: session, requestID: request,
-                                   tabID: tab.id, volume: volume, muted: muted))
+        server?.send(message(session, request))
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
             guard let self, self.pending[tab.id] == request else { return }
             self.pending[tab.id] = nil
-            self.error = "Chrome did not confirm the volume for tab #\(tab.id). Reconnect using the extension."
+            self.error = "Chrome did not confirm the control for tab #\(tab.id). Reconnect using the extension."
         }
     }
 
