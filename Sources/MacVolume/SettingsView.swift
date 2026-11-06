@@ -19,7 +19,7 @@ struct SettingsView: View {
 
             Divider()
             Text("Chrome tab controls").font(.headline)
-            Text("Install MacVolume Tabs and allow access to YouTube and YouTube Music. Playing tabs appear automatically.")
+            Text("Install or reload MacVolume Tabs and allow access to sites. Audio/video tabs appear automatically with individual volume controls.")
                 .font(.caption).foregroundStyle(.secondary)
             Button("Show Chrome Extension Folder") {
                 if let url = ChromeTabModel.extensionURL { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path) }

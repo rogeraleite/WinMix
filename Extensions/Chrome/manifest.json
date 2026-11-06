@@ -1,19 +1,19 @@
 {
   "manifest_version": 3,
   "name": "MacVolume Tabs",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minimum_chrome_version": "116",
-  "description": "Independent volume, mute and play/pause for YouTube and YouTube Music tabs in MacVolume. No per-tab activation.",
-  "permissions": ["scripting", "nativeMessaging", "storage", "alarms"],
-  "host_permissions": ["https://youtube.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://music.youtube.com/*"],
+  "description": "Independent volume, mute and play/pause for audio/video tabs in MacVolume. Automatic on HTTP and HTTPS sites.",
+  "permissions": ["tabs", "scripting", "nativeMessaging", "storage", "alarms"],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "content_scripts": [
     {
-      "matches": ["https://youtube.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://music.youtube.com/*"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["media-controller.js", "page-controller.js"],
       "run_at": "document_start", "world": "MAIN", "all_frames": true
     },
     {
-      "matches": ["https://youtube.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://music.youtube.com/*"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["content-bridge.js"], "run_at": "document_start", "all_frames": true
     }
   ],

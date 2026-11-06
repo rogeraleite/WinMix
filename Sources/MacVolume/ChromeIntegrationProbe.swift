@@ -40,6 +40,15 @@ enum ChromeIntegrationProbe {
             do {
                 switch command["action"] as? String {
                 case "status": break
+                case "drag":
+                    guard let id = command["tabID"] as? Int,
+                          let tab = chrome.tabs.first(where: { $0.id == id && $0.controlled }),
+                          chrome.connected, let volumes = command["volumes"] as? [Double],
+                          !volumes.isEmpty, volumes.count <= 500,
+                          volumes.allSatisfy({ $0.isFinite && (0...1).contains($0) }) else {
+                        throw SpikeError("Supply a controlled tab and finite drag values in 0...1.")
+                    }
+                    for volume in volumes { chrome.setVolume(volume, for: tab) }
                 case "master":
                     guard let gain = command["gain"] as? Double, gain.isFinite, (0...1).contains(gain),
                           let row = mixer.rows.first(where: { $0.key == browserKey }) else {

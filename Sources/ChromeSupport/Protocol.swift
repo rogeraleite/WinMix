@@ -40,7 +40,7 @@ public struct BridgeMessage: Codable {
     public func validate() throws {
         guard version == 1, ["ready", "state", "set", "playback", "shutdown", "error"].contains(type),
               (session?.count ?? 0) <= 80, (requestID?.count ?? 0) <= 80,
-              (error?.count ?? 0) <= 1024, mode == nil || mode == "automatic-youtube",
+              (error?.count ?? 0) <= 1024, mode == nil || ["automatic-youtube", "automatic-sites"].contains(mode ?? ""),
               action == nil || (type == "playback" && ["play", "pause"].contains(action ?? "")) else { throw BridgeError.invalidMessage }
         if let volume { guard volume.isFinite && (0...1).contains(volume) else { throw BridgeError.invalidMessage } }
         if let tabID { guard tabID >= 0 else { throw BridgeError.invalidMessage } }

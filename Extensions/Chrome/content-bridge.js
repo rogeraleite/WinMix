@@ -1,7 +1,9 @@
 (() => {
   const key = Symbol.for("MacVolume.ContentBridge");
   globalThis[key]?.dispose();
-  const channel = "macvolume-page-v1", bridgeID = crypto.randomUUID();
+  // getRandomValues also works on HTTP, where randomUUID is unavailable.
+  const channel = "macvolume-page-v1", bridgeID = Array.from(crypto.getRandomValues(new Uint8Array(16)),
+    byte => byte.toString(16).padStart(2, "0")).join("");
   let port, retry, disposed = false, initialized = false, lastState;
   const waiting = new Map();
   function post(type, volume, requestID, action, allowFallback) {
@@ -42,7 +44,7 @@
         if (message.type === "init") initialized = true;
         if (message.requestID) waiting.set(message.requestID, setTimeout(() => {
           waiting.delete(message.requestID);
-          try { port?.postMessage({ type: "error", requestID: message.requestID, error: "YouTube player did not confirm the control. Reload this page once." }); } catch { /* Worker disconnected. */ }
+          try { port?.postMessage({ type: "error", requestID: message.requestID, error: "Audio/video player did not confirm the control. Reload this page once." }); } catch { /* Worker disconnected. */ }
         }, 2500));
         post(message.type, message.volume, message.requestID, message.action, message.allowFallback);
       });

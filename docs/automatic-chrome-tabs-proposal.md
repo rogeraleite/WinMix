@@ -1,4 +1,8 @@
-# Controle automático por aba — proposta
+# Controle automático por aba — proposta histórica
+
+> O escopo somente YouTube abaixo documenta a decisão de 2026-11-05. O pedido de
+> implementação após a revisão de 2026-11-06 o substitui por HTTP/HTTPS na versão 0.5.0.
+> Consulte `superpowers/specs/2026-11-06-chrome-all-sites-design.md` e `chrome-tab-volume.md`.
 
 Requisito corrigido pelo usuário em 2026-11-05: abas com áudio devem aparecer no MacVolume
 e aceitar controle sem clicar em “Enable this tab” para cada aba. A versão 0.2.x detectava abas automaticamente, mas exigia ativação individual para capturá-las.

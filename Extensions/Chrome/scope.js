@@ -1,8 +1,10 @@
-export const SITE_PATTERNS = [
-  "https://youtube.com/*", "https://www.youtube.com/*",
-  "https://m.youtube.com/*", "https://music.youtube.com/*"
-];
-const origins = new Set(SITE_PATTERNS.map(pattern => pattern.slice(0, -2)));
+export const SITE_PATTERNS = ["http://*/*", "https://*/*"];
 export function supportedURL(value) {
-  try { return origins.has(new URL(value).origin); } catch { return false; }
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+    // Chrome forbids content scripts on the extension store, even with host access.
+    return url.hostname !== "chromewebstore.google.com" &&
+      !(url.hostname === "chrome.google.com" && /^\/webstore(?:\/|$)/.test(url.pathname));
+  } catch { return false; }
 }

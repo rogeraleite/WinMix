@@ -79,7 +79,9 @@ try {
     ignoreDefaultArgs: ["--disable-extensions", "--mute-audio"],
     args: ["--enable-unsafe-extension-debugging", "--autoplay-policy=no-user-gesture-required"]
   });
-  await context.route("https://**/*", route => route.fulfill({ contentType: "text/html", body: fixture(route.request().url()) }));
+  for (const pattern of ["https://**/*", "http://**/*"]) {
+    await context.route(pattern, route => route.fulfill({ contentType: "text/html", body: fixture(route.request().url()) }));
+  }
   // The official testing API marks the disposable extension as installed-via-CDP. A CLI-only
   // load is disabled by Chrome on reload when its protected Developer Mode preference is off.
   const browserCDP = await context.browser().newBrowserCDPSession();
@@ -94,21 +96,30 @@ try {
   const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8")); manifest.path = shim;
   await fs.writeFile(manifestPath, JSON.stringify(manifest));
   async function reconnect() {
-    await worker.evaluate(() => chrome.alarms.create("reconnect", { when: Date.now() + 50 }));
-    await until(() => nativeMode ? latest?.connected : Boolean(client && latest), "automatic native connection");
+    await worker.evaluate(() => chrome.alarms.create("reconnect", { when: Date.now() + 50, periodInMinutes: 0.5 }));
+    try {
+      // Preserve the production reconnect alarm if the immediate wake races host registration.
+      await until(() => nativeMode ? latest?.connected : Boolean(client && latest), "automatic native connection", 40000);
+    } catch (error) {
+      console.error("Bridge diagnostics", await worker.evaluate(() => new Promise(resolve => {
+        const probe = chrome.runtime.connectNative("com.rogerleite.macvolume.chrome");
+        probe.onDisconnect.addListener(() => resolve({ error: chrome.runtime.lastError?.message }));
+        probe.onMessage.addListener(message => { resolve({ message }); probe.disconnect(); });
+        probe.postMessage({ version: 1, type: "state", mode: "automatic-sites", session: "diagnostic", tabs: [] });
+        setTimeout(() => { resolve({ error: "No bridge reply" }); probe.disconnect(); }, 3000);
+      })));
+      throw error;
+    }
   }
   await reconnect();
   const one = await context.newPage(), two = await context.newPage(), outside = await context.newPage();
   await one.goto("https://www.youtube.com/watch?v=fixture-one");
   await two.goto("https://music.youtube.com/watch?v=fixture-two");
-  await outside.goto("https://example.com/not-authorized");
-  await until(() => latest?.tabs?.filter(t => t.controlled).length === 2, "two automatically controlled tabs");
+  await outside.goto("http://example.org/player");
+  await until(() => latest?.tabs?.filter(t => t.controlled).length === 3, "three automatically controlled tabs across HTTP/HTTPS sites");
   assert.equal(context.pages().some(p => p.url().includes("popup.html")), false, "No extension action/popup was opened");
-  assert.deepEqual(new Set(latest.tabs.map(t => t.domain)), new Set(["www.youtube.com", "music.youtube.com"]));
-  assert.equal(await outside.evaluate(() => Boolean(window[Symbol.for("MacVolume.PageController")])), false);
-  assert.equal(await outside.evaluate(() => document.querySelector("#player").volume), 0.8);
-  // The negative-scope page must not contribute an uncontrolled third tone to native meters.
-  await outside.evaluate(() => document.querySelector("#player").pause());
+  assert.deepEqual(new Set(latest.tabs.map(t => t.domain)), new Set(["www.youtube.com", "music.youtube.com", "example.org"]));
+  assert.equal(await outside.evaluate(() => Boolean(window[Symbol.for("MacVolume.PageController")])), true);
   const first = latest.tabs.find(t => t.domain === "www.youtube.com"), second = latest.tabs.find(t => t.domain === "music.youtube.com");
   assert.equal(first.controlMode, "page"); assert.equal(first.canMute, true);
   async function command(tab, volume, muted) {
@@ -151,6 +162,21 @@ try {
     console.log(`Player ${new URL(page.url()).hostname}: actual=${result.actual.toFixed(3)}, site=${result.base.toFixed(3)}, tab=${result.gain.toFixed(3)}`);
     return result;
   }
+  const generic = latest.tabs.find(t => t.domain === "example.org");
+  await command(generic, 0.55, false); await player(outside, 0.44);
+  if (nativeMode) {
+    await native.request({ action: "drag", tabID: generic.id, volumes: [0.2, 0.4, 0.6, 0.8] });
+    await until(() => latest.pending === 0 && latest.tabs.find(t => t.id === generic.id)?.volume === 0.8,
+      "native drag confirms the final requested gain");
+    await player(outside, 0.64);
+    await command(generic, 0.55, false);
+  }
+  await outside.goto("https://example.com/another-player");
+  await until(() => latest.tabs.find(t => t.id === generic.id)?.domain === "example.com" &&
+    latest.tabs.find(t => t.id === generic.id)?.controlled, "cross-site navigation retains independent gain");
+  await player(outside, 0.44);
+  // Pause the third tone before the native master measurements.
+  await outside.evaluate(() => document.querySelector("#player").pause());
   await command(first, 0.3, false); await command(second, 0.7, false);
   await player(one, 0.24); await player(two, 0.42);
   await until(() => latest.tabs.find(t => t.id === first.id)?.canPause === true, "playback capability");
@@ -341,7 +367,7 @@ try {
   await paused(one, false); // Shutdown restores gain without stopping playback.
   await until(async () => (await shutdownPage.evaluate(() => window[Symbol.for("MacVolume.PageController")].controller.gain)) === 1, "paused tab gain restored at shutdown");
   await player(shutdownPage, 0.8); await paused(shutdownPage, true);
-  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): independent gains and play/pause, muted/zero-volume playback, resume targeting, rejected Play, website state, navigation, reload and shutdown. No per-tab activation.`);
+  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): HTTP/HTTPS sites, independent gains and play/pause, muted/zero-volume playback, resume targeting, rejected Play, website state, cross-site navigation, reload and shutdown. No per-tab activation.`);
 } finally {
   await context?.close(); await native?.close(); client?.destroy();
   if (listening) server.close();

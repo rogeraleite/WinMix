@@ -1,34 +1,27 @@
-# Volume e play/pause por aba: YouTube e YouTube Music
+# Volume individual por aba do Chrome
 
-MacVolume e extensão 0.4.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
+App e extensão 0.5.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
 
-Quando uma aba do YouTube ou YouTube Music reproduz áudio, ela aparece automaticamente
-na seção **CHROME TABS** do MacVolume com título, domínio, volume, mute e play/pause. Abas
-pausadas permanecem disponíveis para retomar. Não há botão de
-ativação por aba. Outras páginas ficam fora do controle automático.
+Abas com áudio/vídeo em sites HTTP/HTTPS aparecem automaticamente em **CHROME TABS**,
+com título, domínio e controles independentes. Players compatíveis recebem volume entre
+0% e 100%, mute e play/pause. Pausa e mute preservam a linha. O slider geral do Chrome
+continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho individual.
 
 ## Atualizar a instalação existente
 
-O ID e o registro da ponte existentes continuam válidos se o app e a pasta da extensão
-permanecerem nos mesmos caminhos.
+1. Abra o MacVolume 0.5.0. O app novo deve estar aberto antes da extensão nova.
+2. Em `chrome://extensions`, recarregue **MacVolume Tabs**, na pasta originalmente instalada.
+3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
+4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,
+   confira o acesso ao site e recarregue essa página uma vez.
 
-1. Em `chrome://extensions`, clique em **Recarregar** no cartão **MacVolume Tabs**.
-2. Se o Chrome pedir, autorize acesso somente ao YouTube e ao YouTube Music.
-3. Abra ou continue reproduzindo áudio nesses sites e use os controles no MacVolume.
+O ID e o registro da ponte permanecem válidos na mesma pasta e caminho do app. Reconnect,
+no popup, tenta novamente a conexão com o app. Não há ativação por aba. A configuração
+precisa permitir execução nos sites desejados; acesso apenas ao clicar impede automação
+em segundo plano. A concessão de acesso deve ser feita pelo usuário no Chrome.
 
-Abas que já executavam o controlador 0.3 precisam de uma recarga da página para receber
-play/pause. O painel informa **Reload this page once** nesses casos; o volume continua
-disponível. Isso é uma migração única do código da página, não uma ativação de cada aba.
-Novas páginas compatíveis recebem os controles automaticamente.
-
-Essa é uma atualização única da extensão, não uma habilitação de cada aba. A extensão tenta
-conectar automaticamente os players das páginas que já estavam abertas. Se o Chrome impedir
-uma injeção por falta de permissão, o painel informa a limitação; confira o acesso ao site
-na configuração da extensão. O popup tem status e **Reconnect**, sem controles de ativação.
-
-O controle de navegador usado pelo agente bloqueia `chrome://extensions`; a recarga e a
-confirmação das permissões precisam ser feitas pelo usuário. O app pode mostrar uma mensagem
-pedindo atualizar a extensão enquanto a versão anterior ainda estiver carregada no Chrome.
+O app detecta extensões antigas e mostra **Extension update required**, em vez de tratar
+uma ponte conectada como prova de que os novos controles estão disponíveis.
 
 ## Primeira instalação
 
@@ -36,112 +29,61 @@ pedindo atualizar a extensão enquanto a versão anterior ainda estiver carregad
 ./scripts/build-app.sh
 ```
 
-No Chrome, abra `chrome://extensions`, ative **Modo do desenvolvedor** e escolha **Carregar
-sem compactação**. Selecione `Extensions/Chrome` e copie seu ID. Depois:
+No Chrome, abra `chrome://extensions`, ative Modo do desenvolvedor, escolha Carregar sem
+compactação e selecione `Extensions/Chrome`. Copie o ID e execute:
 
 ```sh
 python3 scripts/install-chrome-bridge.py ID_DA_EXTENSAO --app "$PWD/build/MacVolume.app"
 open build/MacVolume.app
 ```
 
-A extensão conecta automaticamente; o botão **Reconnect** serve para tentar novamente se o
-app estiver fechado durante a primeira tentativa. Não é necessário abrir o popup para que
-abas sejam detectadas ou controladas.
+O instalador registra `com.rogerleite.macvolume.chrome` somente para o ID informado em
+`~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`, sem sudo. Se mover o
+app ou a extensão, atualize o registro com `--replace`. Em Settings, **Show Chrome Extension
+Folder** e **Open Installation Instructions** abrem os recursos incluídos no bundle.
 
-O instalador registra somente `com.rogerleite.macvolume.chrome` em:
+## Permissões e limites
 
-```text
-~/Library/Application Support/Google/Chrome/NativeMessagingHosts/
-```
+- `tabs`: descobrir abas com áudio e seus metadados mesmo quando falta acesso ao site.
+- `http://*/*` e `https://*/*`: executar o controlador de áudio/vídeo nos sites autorizados.
+- `scripting`, `nativeMessaging`, `storage` e `alarms`: injeção, ponte local, estado de sessão
+  e reconexão. Não utiliza `activeTab`, `tabCapture`, `offscreen` ou `debugger`.
 
-Ele permite o ID exato e usa o caminho absoluto da ponte no `.app`, sem `sudo`. Mover o app
-ou carregar a extensão de outra pasta pode exigir atualizar o registro com `--replace`.
+A extensão não captura nem grava áudio, não coleta texto das páginas e não envia conteúdo
+para serviços externos. A ponte local troca apenas comandos e estado de abas com áudio.
+Não há modo anônimo, acesso a arquivos ou controle de páginas internas do Chrome/Web Store.
 
-## Permissões e escopo
+O ganho atua nos elementos HTML audio/video. Grafos Web Audio sem um player compatível,
+players restritos e frames sem acesso não têm garantia de controle. Uma aba audível sem
+player reconhecido mostra a limitação e oferece mute. Em uma página que mistura players
+HTML com outras fontes de som, o slider cobre os players compatíveis; ele não garante
+alterar o áudio de toda a página. Não é um controle universal de qualquer som do Chrome.
 
-As origens autorizadas são somente:
+Frames HTTP/HTTPS novos recebem o controlador. A atualização de documentos já abertos
+conecta o documento principal; players em frames antigos podem exigir uma recarga da página.
 
-- `https://youtube.com/*`
-- `https://www.youtube.com/*`
-- `https://m.youtube.com/*`
-- `https://music.youtube.com/*`
+## Comportamento
 
-As permissões técnicas são `scripting`, `nativeMessaging`, `storage` e `alarms`. O acesso aos
-sites também permite obter título/URL somente dessas páginas. A extensão não solicita
-`tabs`, `<all_urls>`, `activeTab`, `tabCapture`, `offscreen` ou `debugger`.
+- Player do site em 80% e aba em 30% resultam em 24%, antes do mestre do Chrome e do sistema.
+  Alterar o player mantém os fatores separados; repetir um comando não acumula multiplicação.
+- Durante o arraste, o valor solicitado aparece com **APPLYING**. O slider permanece ativo.
+  Há uma requisição por aba; valores intermediários são substituídos pelo mais recente.
+  A confirmação envia o próximo ganho. Outras abas mantêm sua própria fila.
+- Erro, timeout ou desconexão descartam ajustes enfileirados e mostram o último estado
+  confirmado. Trocar a sessão ou fechar a aba também limpa seus comandos pendentes.
+- Novos players herdam o ganho. Navegar entre sites mantém o ganho da aba durante a sessão;
+  navegar para uma página restrita encerra seu controle de player.
+- Ajustar o slider remove mute da aba. Play/pause preserva ganho e mute.
+- Pause interrompe os players compatíveis ativos. Play retoma os pausados pelo app ou o
+  player principal mais recentemente ativo. Players apenas pré-carregados não são iniciados.
+  Bloqueios de Play e falhas parciais são informados com o estado real.
+- Ao encerrar normalmente o app, o volume dos players é restaurado e o mute aplicado pela
+  extensão é desfeito, respeitando mudanças feitas pelo usuário. A reprodução não é reiniciada.
+- Desconectar somente a ponte preserva os ganhos enquanto a extensão está ativa. Recarregar
+  ou desativar a extensão interrompe a sessão; ganhos não são IDs persistentes de abas.
+  Encerramento forçado não garante restauração imediata.
 
-O controlador ajusta volume e reprodução dos elementos de áudio/vídeo nas páginas autorizadas.
-Não captura ou grava áudio, não coleta texto de páginas e não transmite conteúdo para serviços
-externos. A ponte local troca apenas comandos e estado. Modo anônimo e outros sites estão
-fora do escopo. Frames novos autorizados recebem o controlador; o bootstrap de páginas já
-abertas prioriza o player do documento principal, sem depender de frames de anúncios.
-
-## Comportamento dos controles
-
-- O ganho da aba se combina com o volume do player. Player em 80% e aba em 30% produzem
-  volume efetivo de 24%, antes do mestre do Chrome e da saída do sistema.
-- Alterar o volume no player mantém esse fator separado; comandos repetidos não multiplicam
-  o resultado novamente.
-- Novos players da mesma aba recebem o ganho automaticamente. Navegação dentro dos sites
-  autorizados mantém o ajuste durante a sessão; abas fechadas ou fora desses sites têm seu
-  estado removido.
-- Pausar ou silenciar não elimina a linha já detectada. A API de abas aplica o mute; ele
-  pode estar disponível mesmo quando o player não suporta controle de volume.
-- O app exibe valores confirmados. Sem um player compatível, informa a limitação em vez de
-  oferecer um slider aparentemente funcional.
-- O controle geral do Chrome no mixer é o mestre de todas as abas, inclusive páginas que
-  não fazem parte da lista automática. Boost continua sendo uma opção desse mestre.
-- O botão Pause interrompe os players compatíveis que estão tocando na aba selecionada,
-  inclusive em frames autorizados. Play retoma somente os players pausados pelo MacVolume;
-  sem esse conjunto, tenta o player mais recentemente ativo no documento principal.
-  Players novos, anúncios pré-carregados e elementos sem histórico de reprodução não são
-  iniciados arbitrariamente. Abas diferentes mantêm reprodução e ganhos independentes.
-- Play/pause preserva volume e mute. Um player silenciado ou com ganho zero ainda pode
-  estar tocando; o botão exibe Pause nesse estado. Mudanças feitas no site também aparecem.
-- Se o navegador bloquear Play, o painel mostra a falha e orienta iniciar a reprodução no
-  próprio site uma vez. Falhas parciais entre frames mostram o estado real e o erro, sem
-  afirmar que todos os players concluíram o comando. Reconectar não repete comandos antigos.
-- Ao encerrar o app, a restauração de volume/mute não reinicia players pausados nem
-  interrompe players que continuam tocando.
-- Se somente a ponte desconectar, os ganhos das páginas permanecem enquanto a extensão
-  estiver ativa. O app desabilita comandos até a reconexão.
-- Encerrar normalmente o MacVolume restaura o volume original dos players e desfaz o mute
-  aplicado pela extensão, respeitando mudanças de mute feitas pelo usuário.
-- Recarregar/desativar a extensão interrompe sua sessão; os ajustes não são salvos como IDs
-  permanentes de abas. Não dependa de manter um ganho após uma falha ou encerramento forçado.
-
-O suporte é ao player de áudio/vídeo usado nesses sites, não a todo grafo Web Audio arbitrário.
-Caminhos de áudio não suportados são apresentados explicitamente. Compatibilidade com cada
-variante futura do YouTube depende de validação; não há promessa de controle universal.
-
-## Mesmo repositório, mesmo produto
-
-| Componente | Código |
-| --- | --- |
-| App e controles | `Sources/MacVolume/ChromeTab*.swift` |
-| Controlador do player | `Extensions/Chrome/media-controller.js`, `page-controller.js` |
-| Ponte de conteúdo e descoberta | `Extensions/Chrome/content-bridge.js`, `background.js` |
-| Ponte nativa e protocolo | `Sources/ChromeBridge/`, `Sources/ChromeSupport/` |
-| Registro/remoção | `scripts/*-chrome-bridge.py` |
-
-O build inclui a extensão, os scripts e os guias em `Contents/Resources`. Em Settings, os
-botões **Show Chrome Extension Folder** e **Open Installation Instructions** ajudam a
-configurar uma distribuição compilada. Carregar a cópia do `.app` em outra pasta produz
-outro ID; mantenha a pasta originalmente registrada para evitar essa troca.
-
-Os ícones usam o logo do app em PNGs de 16, 32, 48 e 128 pixels. Para regenerá-los:
-
-```sh
-python3 scripts/make-icon.py --chrome-only
-```
-
-Para remover: remova a extensão no Chrome e execute:
-
-```sh
-python3 scripts/uninstall-chrome-bridge.py
-```
-
-## Verificação reproduzível
+## Verificação
 
 ```sh
 swift test
@@ -150,25 +92,16 @@ python3 -m unittest discover -s Tests -p 'test_*.py'
 ./scripts/build-app.sh build/validation/MacVolume.app
 ```
 
-O teste de integração usa Playwright e Chrome for Testing em perfil temporário, com páginas
-HTTPS de teste nos hosts aprovados, sem abrir o popup ou invocar a ação da extensão. Ele não
-usa o perfil pessoal nem acessa o YouTube real; os resultados de fixtures não substituem a
-verificação do serviço em produção.
+Integração isolada, com páginas HTTP/HTTPS controladas, extensão e ponte reais:
 
 ```sh
 PLAYWRIGHT_MODULE=/caminho/para/playwright CHROME_BINARY="/caminho/para/Google Chrome for Testing" MACVOLUME_TEST_APP=build/validation/MacVolume.app node scripts/test-chrome-integration.mjs
 ```
 
-Com mixer/tap Core Audio reais, informe uma saída explícita. `--probe --devices` lista os UIDs:
+Acrescente `MACVOLUME_TEST_OUTPUT=UID` e `--native` para testar modelos nativos e mestre Core
+Audio em saída explícita, sem alterar saída padrão, defaults ou perfil pessoal.
 
-```sh
-build/validation/MacVolume.app/Contents/MacOS/MacVolume --probe --devices
-PLAYWRIGHT_MODULE=/caminho/para/playwright CHROME_BINARY="/caminho/para/Google Chrome for Testing" MACVOLUME_TEST_APP=build/validation/MacVolume.app MACVOLUME_TEST_OUTPUT=UID node scripts/test-chrome-integration.mjs --native
-```
+Resultados em [chrome-tab-validation.md](chrome-tab-validation.md). Testes em serviços e
+perfil pessoais estão separados em [chrome-manual-validation.md](chrome-manual-validation.md).
 
-`MACVOLUME_TEST_OUTPUTS` aceita uma lista JSON de saídas adicionais. Os probes usam um socket
-privado e não alteram a saída padrão ou os volumes salvos. O modo nativo controla somente o
-Chrome for Testing. Os tons das fixtures são de baixo nível; a fixture negativa Web Audio
-usa um nível maior para ultrapassar o limiar de detecção audível do navegador.
-
-Veja os [resultados de validação](chrome-tab-validation.md) e o [roteiro manual](chrome-manual-validation.md).
+Para remover, desinstale a extensão e execute `python3 scripts/uninstall-chrome-bridge.py`.

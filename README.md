@@ -2,19 +2,24 @@
 
 Per-app volume control for macOS 14.4+, built on Core Audio process taps.
 
-## Independent YouTube tab controls
+## Independent Chrome tab controls
 
-Version 0.4.0 automatically discovers YouTube and YouTube Music players and gives each tab
-its own volume, mute and play/pause controls in MacVolume. Paused tabs stay available to resume. No
-per-tab activation or popup interaction is required. Access is limited to the approved HTTPS
-YouTube origins; other sites are excluded. The extension controls HTML audio/video players,
-keeps the site's own volume separate, and uses Chrome's tab mute. Playback controls do not
-change volume or mute. It does not capture audio.
+Version 0.5.0 automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
+compatible players individual volume, mute and play/pause controls. Paused tabs remain
+available. The slider stays responsive during dragging and confirms the last requested gain.
+Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-For an existing installation, reload **MacVolume Tabs** once at `chrome://extensions` and
-approve the YouTube/Music access if requested. Pages running the older 0.3 controller need a
-one-time page reload for play/pause; the row tells you when this is necessary. New supported
-pages work automatically. Chrome's app slider remains the master for every Chrome tab.
+**Update an existing installation:** reopen MacVolume 0.5.0, reload **MacVolume Tabs** at
+`chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
+and HTTP/HTTPS host access so it can discover audio tabs and control their players.
+It does not capture audio or send page content to external services. Existing pages may
+need one reload if site access was previously withheld. Keep the original extension folder
+and ID so the native bridge registration remains valid.
+
+The controller adjusts HTML audio/video players. Internal Chrome pages, the Web Store,
+files, and audio paths without a compatible player do not get a working volume slider;
+where possible the app reports the limitation and offers tab mute. Arbitrary Web Audio
+output is not controlled by the HTML player gain.
 
 For initial setup, load `Extensions/Chrome` as an unpacked extension, copy its ID and run:
 
@@ -23,10 +28,9 @@ python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/MacVolum
 open build/MacVolume.app
 ```
 
-See the [setup and behavior guide](docs/chrome-tab-volume.md), [validation evidence](docs/chrome-tab-validation.md)
-and [remaining live checks](docs/chrome-manual-validation.md), in Portuguese. The app bundle
-includes the extension, native bridge and setup scripts; the original extension folder and
-registered ID can remain unchanged across this update.
+See the [setup guide](docs/chrome-tab-volume.md), [validation evidence](docs/chrome-tab-validation.md)
+and [live checks](docs/chrome-manual-validation.md). The app bundle includes the extension,
+native bridge and setup scripts.
 
 ## Build and run
 

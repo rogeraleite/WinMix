@@ -23,6 +23,7 @@ struct ChromeTabsView: View {
                     .font(Skin.label(9)).foregroundStyle(Skin.amber.opacity(0.8))
                 ForEach(model.tabs) { tab in
                     ChromeTabRow(tab: tab, connected: model.connected, pending: model.pending[tab.id] != nil,
+                                 displayedVolume: model.requestedVolumes[tab.id] ?? tab.volume,
                                  setVolume: { model.setVolume($0, for: tab) }, toggleMute: { model.toggleMute(tab) },
                                  togglePlayback: { model.setPlayback(tab.playing == true ? "pause" : "play", for: tab) })
                 }
@@ -41,10 +42,11 @@ private struct ChromeTabRow: View {
     let tab: ChromeTab
     let connected: Bool
     let pending: Bool
+    let displayedVolume: Double
     let setVolume: (Double) -> Void
     let toggleMute: () -> Void
     let togglePlayback: () -> Void
-    private var enabled: Bool { connected && tab.controlled && !pending }
+    private var enabled: Bool { connected && tab.controlled }
     private var canTogglePlayback: Bool { tab.playing == true ? tab.canPause == true : tab.canPlay == true }
 
     var body: some View {
@@ -79,17 +81,17 @@ private struct ChromeTabRow: View {
                     .accessibilityLabel("\(tab.muted ? "Unmute" : "Mute") \(tab.title), tab \(tab.id)")
                     .disabled(!connected || pending || !(tab.canMute == true || tab.controlled))
                     if tab.controlled {
-                        LEDSlider(value: Binding(get: { tab.volume }, set: setVolume), maximum: 1,
+                        LEDSlider(value: Binding(get: { displayedVolume }, set: setVolume), maximum: 1,
                                   isMuted: tab.muted, label: "\(tab.title), tab \(tab.id) volume")
                             .disabled(!enabled)
-                        DotText(text: "\(Int((tab.volume * 100).rounded()))%", color: tab.muted ? Skin.bevelHighlight : Skin.green)
+                        DotText(text: "\(Int((displayedVolume * 100).rounded()))%", color: tab.muted ? Skin.bevelHighlight : Skin.green)
                             .frame(width: 50, alignment: .trailing)
                     } else {
                         Text("Volume unavailable · mute available").font(Skin.label(9)).foregroundStyle(Skin.amber)
                         Spacer(minLength: 0)
                     }
                 }
-                .opacity(connected && !pending ? 1 : 0.5)
+                .opacity(connected ? 1 : 0.5)
             }
             if let issue = tab.playbackIssue {
                 Text(issue).font(Skin.label(9)).foregroundStyle(Skin.amber)
@@ -104,7 +106,7 @@ private struct ChromeTabRow: View {
     private var stateText: String {
         if !connected { return "DISCONNECTED · last confirmed state" }
         if let issue = tab.issue { return issue }
-        if !tab.controlled { return "Reload MacVolume Tabs once for automatic YouTube controls" }
+        if !tab.controlled { return "Volume unavailable for this audio source" }
         if pending { return "APPLYING…" }
         if tab.muted { return tab.playing == true ? "PLAYING · MUTED" : "MUTED" }
         if let playing = tab.playing { return playing ? "PLAYING" : "PAUSED" }

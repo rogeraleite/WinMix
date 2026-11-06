@@ -1,9 +1,11 @@
 import { HOST, VERSION, validCommand, validPlayerState, tabMetadata } from "./protocol.js";
 import { SITE_PATTERNS, supportedURL } from "./scope.js";
+import { TabCommandQueue } from "./command-queue.js";
 
 const frames = new Map(), settings = new Map(), requests = new Map(), bootstrapErrors = new Map();
 let port, acknowledged = false, lastError = "Open MacVolume to connect.", sessionID;
-let snapshotQueue = Promise.resolve(), commandQueue = Promise.resolve();
+let snapshotQueue = Promise.resolve();
+const commands = new TabCommandQueue();
 const loaded = (async () => {
   const saved = await chrome.storage.session.get(["session", "tabSettings"]);
   sessionID = saved.session || crypto.randomUUID();
@@ -29,13 +31,13 @@ function report(error, requestID) {
   post({ version: VERSION, type: "error", requestID, error: lastError });
 }
 function sendFrame(frame, type, volume, action, allowFallback = false) {
-  if (frame.closed) return Promise.reject(new Error("The YouTube page changed. Try the control again."));
+  if (frame.closed) return Promise.reject(new Error("The player page changed. Try the control again."));
   const requestID = crypto.randomUUID();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { requests.delete(requestID); reject(new Error("YouTube player did not confirm the control. Reload this page once.")); }, 3500);
+    const timer = setTimeout(() => { requests.delete(requestID); reject(new Error("Audio/video player did not confirm the control. Reload this page once.")); }, 3500);
     requests.set(requestID, { frame, resolve, reject, timer });
     try { frame.port.postMessage({ type, volume, requestID, action, allowFallback }); }
-    catch { clearTimeout(timer); requests.delete(requestID); reject(new Error("YouTube controller disconnected.")); }
+    catch { clearTimeout(timer); requests.delete(requestID); reject(new Error("Page controller disconnected.")); }
   });
 }
 function dropFrame(frame) {
@@ -44,7 +46,7 @@ function dropFrame(frame) {
   if (group?.get(frame.key) === frame) group.delete(frame.key);
   if (group?.size === 0) frames.delete(frame.tabID);
   for (const [id, item] of requests) if (item.frame === frame) {
-    clearTimeout(item.timer); requests.delete(id); item.reject(new Error("The YouTube page changed during the command."));
+    clearTimeout(item.timer); requests.delete(id); item.reject(new Error("The player page changed during the command."));
   }
 }
 chrome.runtime.onConnect.addListener(controllerPort => {
@@ -92,8 +94,8 @@ async function state(requestID) {
   await loaded;
   const tabs = [];
   let changed = false;
-  for (const tab of await chrome.tabs.query({ url: SITE_PATTERNS })) {
-    if (tab.incognito || !supportedURL(tab.url)) continue;
+  for (const tab of await chrome.tabs.query({})) {
+    if (tab.incognito) continue;
     const value = setting(tab.id), controllers = tabFrames(tab.id).filter(frame => frame.ready && frame.state);
     const playing = controllers.some(frame => frame.state.playingCount > 0);
     const audible = controllers.some(frame => (frame.state.audibleCount ?? frame.state.playingCount) > 0);
@@ -107,19 +109,22 @@ async function state(requestID) {
     const hasPlayer = controllers.some(frame => frame.state.mediaCount > 0);
     const confirmed = controllers.every(frame => Math.abs(frame.state.volume - value.volume) < 1e-9);
     tabs.push(tabMetadata(tab, {
-      controlled: hasPlayer && confirmed, canMute: true, controlMode: "page", volume: value.volume,
+      // Keep the slider present while frame confirmations arrive during a drag.
+      controlled: supportedURL(tab.url) && hasPlayer && (confirmed || value.desiredVolume !== undefined),
+      canMute: true, controlMode: "page", volume: value.volume,
       muted: Boolean(tab.mutedInfo?.muted), audible: !tab.mutedInfo?.muted && (audible || Boolean(tab.audible)),
       playing, canPlay, canPause: !legacyActive && playback.some(frame => frame.state.canPause),
       ...(playbackIssue ? { playbackIssue } : (playback.length === 0 && hasPlayer) || legacyActive
         ? { playbackIssue: "Reload this page once to enable play/pause with the updated extension." } : {}),
-      ...(!hasPlayer ? { issue: bootstrapErrors.get(tab.id) || (controllers.length > 0
-        ? "No supported audio/video player found; tab mute is available."
-        : "Waiting for the YouTube controller. If this page was already open during the update, reload it once.") } : {})
+      ...(!supportedURL(tab.url) ? { issue: "Chrome restricts volume scripts on this page; tab mute is available." }
+        : !hasPlayer ? { issue: bootstrapErrors.get(tab.id) || (controllers.length > 0
+          ? "No supported audio/video player found; tab mute is available."
+          : "Waiting for the player. Allow the extension access to this site, then reload the page once.") } : {})
     }));
     if (tabs.length === 500) break;
   }
   if (changed) await save();
-  return { version: VERSION, type: "state", mode: "automatic-youtube", session: sessionID, tabs, ...(requestID ? { requestID } : {}) };
+  return { version: VERSION, type: "state", mode: "automatic-sites", session: sessionID, tabs, ...(requestID ? { requestID } : {}) };
 }
 function publish(requestID) {
   const task = snapshotQueue.then(async () => { const message = await state(requestID); post(message); return message; });
@@ -139,12 +144,12 @@ async function apply(message) {
   await loaded;
   if (!validCommand(message) || message.session !== sessionID) throw new Error("Invalid or expired tab command.");
   const tab = await chrome.tabs.get(message.tabID);
-  if (!supportedURL(tab.url) || tab.incognito) throw new Error("Automatic controls are limited to YouTube and YouTube Music.");
+  if (tab.incognito) throw new Error("Incognito tabs are outside automatic controls.");
   const value = setting(tab.id), previous = value.volume;
   const controllers = tabFrames(tab.id).filter(frame => frame.ready);
   if (message.type === "playback") {
     const capable = controllers.filter(frame => typeof frame.state?.canPlay === "boolean");
-    if (!capable.length) throw new Error("Playback unavailable. Reload this YouTube page once after updating the extension.");
+    if (!capable.length) throw new Error("Playback unavailable. Reload this player page once after updating the extension.");
     if (message.action === "pause" && controllers.some(frame => frame.state?.playingCount > 0 && typeof frame.state.canPause !== "boolean")) {
       throw new Error("Reload this page once to update all its players before using play/pause.");
     }
@@ -154,7 +159,7 @@ async function apply(message) {
       targets = capable.filter(frame => frame.state.resumeCount > 0);
       if (!targets.length && !capable.some(frame => frame.state.playingCount > 0)) {
         targets = capable.filter(frame => frame.frameID === 0 && frame.state.canPlay);
-        if (!targets.length) throw new Error("No previously active YouTube player is available to resume.");
+        if (!targets.length) throw new Error("No previously active audio/video player is available to resume.");
       }
     }
     const results = await Promise.allSettled(targets.map(frame => sendFrame(frame, "playback", undefined,
@@ -165,11 +170,11 @@ async function apply(message) {
     return;
   }
   const hasPlayer = controllers.some(frame => frame.state?.mediaCount > 0);
-  if (!hasPlayer && Math.abs(message.volume - previous) > 1e-9) throw new Error("The YouTube player is not available for volume control yet.");
+  if (!hasPlayer && Math.abs(message.volume - previous) > 1e-9) throw new Error("The audio/video player is not available for volume control yet.");
   value.desiredVolume = message.volume;
   try {
     const states = await Promise.all(controllers.map(frame => sendFrame(frame, "set", message.volume)));
-    if (states.some(state => Math.abs(state.volume - message.volume) > 1e-9)) throw new Error("YouTube did not apply the requested volume.");
+    if (states.some(state => Math.abs(state.volume - message.volume) > 1e-9)) throw new Error("The player did not apply the requested volume.");
     if (Boolean(tab.mutedInfo?.muted) !== message.muted) {
       if (typeof value.originalMuted !== "boolean") value.originalMuted = Boolean(tab.mutedInfo?.muted);
       await chrome.tabs.update(tab.id, { muted: message.muted });
@@ -190,13 +195,13 @@ function connect() {
     if (message?.version !== VERSION) { report(new Error("Update MacVolume and its extension together.")); return; }
     if (message.type === "ready") { acknowledged = true; lastError = ""; return; }
     if (message.type === "error") { lastError = message.error || "Bridge error."; return; }
-    commandQueue = commandQueue.then(async () => {
-      if (message.type === "shutdown") {
+    const task = message.type === "shutdown"
+      ? commands.drain(async () => {
         await loaded;
         await Promise.allSettled([...settings.keys()].map(id => restoreTab(id)));
         await save(); await publish();
-      } else await apply(message);
-    }).catch(error => report(error, message.requestID));
+      }) : commands.enqueue(message.tabID, () => apply(message));
+    task.catch(error => report(error, message.requestID));
   });
   candidate.onDisconnect.addListener(() => {
     const error = chrome.runtime.lastError;
@@ -216,7 +221,7 @@ async function bootstrap(tab) {
     // New authorized child frames receive the declared all_frames content scripts.
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", files: ["media-controller.js", "page-controller.js"] });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content-bridge.js"] });
-  } catch { bootstrapErrors.set(tab.id, "Allow the extension access to YouTube and YouTube Music, then reload this page once."); }
+  } catch { bootstrapErrors.set(tab.id, "Allow MacVolume Tabs access to this site, then reload this page once."); }
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || message?.target !== "worker") return;
