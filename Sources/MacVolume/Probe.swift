@@ -2,6 +2,7 @@ import AppKit
 import CoreAudio
 import ServiceManagement
 import SwiftUI
+import ChromeSupport
 
 /// Headless test mode: taps one process for a few seconds and logs what the engine sees.
 ///
@@ -27,6 +28,27 @@ enum Probe {
         if arguments.contains("--permission") {
             log("permission: \(AudioCaptureAccess.status()) (raw \(AudioCaptureAccess.rawPreflight().map(String.init) ?? "nil"))")
             return 0
+        }
+        if arguments.contains("--devices") {
+            do {
+                let current = try AudioObjectID.defaultOutputUID()
+                for device in try AudioObjectID.systemObject.readObjectList(kAudioHardwarePropertyDevices) {
+                    var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams,
+                                                             mScope: kAudioObjectPropertyScopeOutput,
+                                                             mElement: kAudioObjectPropertyElementMain)
+                    var size: UInt32 = 0
+                    guard AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size) == noErr, size > 0 else { continue }
+                    let uid = try device.readString(kAudioDevicePropertyDeviceUID)
+                    let data = try JSONSerialization.data(withJSONObject: ["uid": uid,
+                        "name": try device.readString(kAudioObjectPropertyName), "default": uid == current], options: [.sortedKeys])
+                    log(String(decoding: data, as: UTF8.self))
+                }
+                return 0
+            } catch { log(error.localizedDescription); return 1 }
+        }
+        if arguments.contains("--chrome-integration") {
+            guard let output = value("--output") else { log("--chrome-integration requires an explicit --output UID"); return 2 }
+            return MainActor.assumeIsolated { ChromeIntegrationProbe.run(outputUID: output) }
         }
         if arguments.contains("--groups") {
             let processes = (try? AudioProcess.all()) ?? []
@@ -195,9 +217,15 @@ enum Probe {
             ("boost", MixerModel(previewRows: rows, settings: settings, boostEnabled: true, outputName: "MacBook Pro Speakers")),
             ("empty", MixerModel(previewRows: [], settings: [:], boostEnabled: false, outputName: "MacBook Pro Speakers")),
         ]
-        for (name, model) in states {
-            let size = NSSize(width: 480, height: 340)
-            let view = NSHostingView(rootView: MixerView(model: model).frame(width: size.width, height: size.height))
+        let tabState = Data(#"{"version":1,"type":"state","session":"preview","tabs":[{"id":41,"title":"YouTube — Music for work","domain":"youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.3,"muted":false},{"id":42,"title":"YouTube — Live concert","domain":"youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.7,"muted":true},{"id":43,"title":"YouTube — Loading player","domain":"www.youtube.com","audible":true,"controlled":false,"canMute":true,"controlMode":"page","issue":"Waiting for the YouTube player","volume":1,"muted":false}]}"#.utf8)
+        let tabs = (try? BridgeMessage.decode(tabState).tabs) ?? []
+        let chrome = ChromeTabModel(previewTabs: tabs, connected: true)
+        let previews = states.map { ($0.0, $0.1, Optional<ChromeTabModel>.none) }
+            + [("chrome", states[0].1, chrome),
+               ("chrome-disconnected", states[0].1, ChromeTabModel(previewTabs: tabs, connected: false))]
+        for (name, model, chrome) in previews {
+            let size = NSSize(width: 480, height: chrome == nil ? 340 : 620)
+            let view = NSHostingView(rootView: MixerView(model: model, chrome: chrome).frame(width: size.width, height: size.height))
             view.frame = NSRect(origin: .zero, size: size)
             let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.contentView = view

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MixerView: View {
     @ObservedObject var model: MixerModel
+    var chrome: ChromeTabModel? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,7 +63,7 @@ struct MixerView: View {
     @ViewBuilder
     private var rowsPanel: some View {
         Group {
-            if model.rows.isEmpty {
+            if model.rows.isEmpty && chrome == nil {
                 VStack(spacing: 10) {
                     DotText(text: "No signal", color: Skin.amber, dot: 2.5, gap: 0.5)
                     Text("Play something and it will show up here.")
@@ -82,6 +83,7 @@ struct MixerView: View {
                                 toggleMute: { model.toggleMute(row) }
                             )
                         }
+                        if let chrome { ChromeTabsView(model: chrome) }
                     }
                     .padding(4)
                 }

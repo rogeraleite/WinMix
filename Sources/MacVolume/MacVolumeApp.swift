@@ -15,6 +15,7 @@ struct MacVolumeApp: App {
     @StateObject private var permission = PermissionModel()
     @StateObject private var mixer = MixerModel()
     @StateObject private var loginItem = LoginItemModel()
+    @StateObject private var chrome = ChromeTabModel()
 
     var body: some Scene {
         WindowGroup("MacVolume") {
@@ -23,7 +24,7 @@ struct MacVolumeApp: App {
                 if permission.status == .denied {
                     PermissionView(permission: permission)
                 } else {
-                    MixerView(model: mixer)
+                    MixerView(model: mixer, chrome: chrome)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

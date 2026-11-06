@@ -92,6 +92,7 @@ final class ProcessVolumeTap {
     private var retiringRoutes: [OutputRoute] = []
     private var lastCallbackCount = 0
     private(set) var outputUID: String?
+    private(set) var routeGeneration = 0
 
     init(processIDs: [AudioObjectID], name: String) {
         self.processIDs = processIDs
@@ -123,6 +124,7 @@ final class ProcessVolumeTap {
         shared.pointee.currentGain = shared.pointee.targetGain
         let uid = try outputUID ?? AudioObjectID.defaultOutputUID()
         route = try makeRoute(outputUID: uid)
+        routeGeneration += 1
         self.outputUID = uid
     }
 
@@ -136,6 +138,7 @@ final class ProcessVolumeTap {
             retire(oldRoute, onceRunning: newRoute)
         }
         route = newRoute
+        routeGeneration += 1
         outputUID = uid
         lastCallbackCount = 0
     }

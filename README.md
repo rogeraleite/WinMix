@@ -2,6 +2,29 @@
 
 Per-app volume control for macOS 14.4+, built on Core Audio process taps.
 
+## Automatic YouTube tab volume
+
+Version 0.3.0 automatically discovers and controls YouTube and YouTube Music players. No
+per-tab activation or popup interaction is required. Access is limited to the approved HTTPS
+YouTube origins; other sites are excluded. The extension controls HTML audio/video volume,
+keeps the site's own volume separate, and uses Chrome's tab mute. It does not capture audio.
+
+For an existing installation, reload **MacVolume Tabs** once at `chrome://extensions` and
+approve the YouTube/Music access if requested. Already-open pages are bootstrapped
+automatically. Chrome's app slider remains the master for every Chrome tab.
+
+For initial setup, load `Extensions/Chrome` as an unpacked extension, copy its ID and run:
+
+```sh
+python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/MacVolume.app"
+open build/MacVolume.app
+```
+
+See the [setup and behavior guide](docs/chrome-tab-volume.md), [validation evidence](docs/chrome-tab-validation.md)
+and [remaining live checks](docs/chrome-manual-validation.md), in Portuguese. The app bundle
+includes the extension, native bridge and setup scripts; the original extension folder and
+registered ID can remain unchanged across this update.
+
 ## Build and run
 
 ```sh
@@ -49,6 +72,9 @@ open -n build/MacVolume.app --args --probe --login-item --log /tmp/login.log
 The window is a retro hardware skin: gunmetal panels, a scrolling dot-matrix display and segmented
 LED sliders (`Skin.swift`). The display holds still while the app is in the background. The logo is
 drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
+The same script exports the Chrome extension icons at 16, 32, 48 and 128 pixels. Use
+`python3 scripts/make-icon.py --chrome-only` to regenerate only those PNGs, then reload the
+unpacked extension in Chrome to refresh its toolbar and extension-manager icons.
 
 To check the look without opening the app or touching audio, render the window to PNGs:
 
@@ -58,8 +84,9 @@ To check the look without opening the app or touching audio, render the window t
 
 ## How it works
 
-`AudioProcessMonitor` watches Core Audio's process list. `AppOwner` groups each process under the
-app responsible for it (Chrome Helper → Chrome, WebKit GPU → the app it renders for), using the
+`AudioProcessMonitor` watches Core Audio's process list. `AppOwner` first uses an executable's
+enclosing app bundle (Chrome Helper → Chrome), so a browser launched from an editor still owns
+its audio. Shared services such as WebKit GPU use the app responsible for them through the
 private `responsibility_get_pid_responsible_for_pid`. `MixerModel` shows one row per app that is
 playing and runs one tap per app, covering all its processes, only while that app is away from 100%
 or muted. New helpers are added to the running tap as soon as they appear, before they play, so

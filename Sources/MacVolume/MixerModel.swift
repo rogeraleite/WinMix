@@ -281,9 +281,10 @@ final class MixerModel: ObservableObject {
     /// For headless tests.
     func tapMeters(for key: String) -> ProcessVolumeTap.Meters? { taps[key]?.takeMeters() }
     func tapDiagnostics(for key: String) -> ProcessVolumeTap.Diagnostics? { taps[key]?.diagnostics }
+    func tapGeneration(for key: String) -> Int { taps[key]?.routeGeneration ?? 0 }
     func simulateStall(for key: String) { taps[key]?.simulateStall() }
 
-    private func stopAll() {
+    func stopAll() {
         taps.values.forEach { $0.stop() }
         taps.removeAll()
     }

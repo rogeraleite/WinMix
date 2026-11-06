@@ -6,7 +6,11 @@ let package = Package(
     // Core Audio process taps need macOS 14.4+.
     platforms: [.macOS("14.4")],
     targets: [
-        .executableTarget(name: "MacVolume", path: "Sources/MacVolume")
+        .target(name: "ChromeSupport"),
+        .executableTarget(name: "ChromeBridge", dependencies: ["ChromeSupport"]),
+        .executableTarget(name: "MacVolume", dependencies: ["ChromeSupport"], path: "Sources/MacVolume"),
+        .testTarget(name: "ChromeSupportTests", dependencies: ["ChromeSupport"]),
+        .testTarget(name: "MacVolumeTests", dependencies: ["MacVolume", "ChromeSupport"])
     ],
     swiftLanguageModes: [.v5]
 )

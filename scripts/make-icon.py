@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Draws the MacVolume logo and writes Resources/AppIcon.icns. Needs Pillow and macOS iconutil.
+"""Draws the MacVolume logo for macOS and Chrome. Needs Pillow and macOS iconutil.
 
 A rising wedge of LED cells, the universal sign for "volume", in a riveted metal case.
 """
+import argparse
 import pathlib
 import subprocess
 import tempfile
@@ -79,8 +80,17 @@ def draw_logo():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--chrome-only", action="store_true", help="Export Chrome PNGs without changing the macOS icon")
+    args = parser.parse_args()
     root = pathlib.Path(__file__).resolve().parent.parent
     logo = draw_logo()
+    chrome_icons = root / "Extensions/Chrome/icons"
+    chrome_icons.mkdir(parents=True, exist_ok=True)
+    for size in (16, 32, 48, 128):
+        logo.resize((size, size), Image.LANCZOS).save(chrome_icons / f"icon{size}.png")
+    if args.chrome_only:
+        return
     with tempfile.TemporaryDirectory() as temp:
         iconset = pathlib.Path(temp) / "AppIcon.iconset"
         iconset.mkdir()

@@ -19,18 +19,30 @@ struct AppOwner {
     let pid: pid_t
     let bundleID: String
 
-    /// Bundled helpers and XPC services are grouped under the app responsible for them
-    /// (Chrome Helper → Chrome, WebKit GPU → the app showing the web content). Command-line
-    /// tools stay on their own, otherwise everything run from a terminal would group under it.
+    /// A bundled executable belongs to its enclosing app even when launched by an editor.
+    /// Shared XPC services use macOS responsibility; command-line processes stay separate.
     init(of process: AudioProcess) {
-        if !process.bundleID.isEmpty,
-           let responsible = Self.responsiblePID(for: process.pid), responsible != process.pid {
-            let bundleID = Self.bundleID(of: responsible)
-            (key, pid, self.bundleID) = (bundleID ?? "pid:\(responsible)", responsible, bundleID ?? "")
+        let responsible = Self.responsiblePID(for: process.pid)
+        let enclosing = ProcessIdentity.executablePath(of: process.pid)
+            .flatMap(ProcessIdentity.enclosingAppURL)
+            .flatMap { Bundle(url: $0)?.bundleIdentifier }
+        self.init(pid: process.pid, bundleID: process.bundleID, enclosingBundleID: enclosing,
+                  responsiblePID: responsible, responsibleBundleID: responsible.flatMap(Self.bundleID))
+    }
+
+    /// Pure ownership decision, also used by tests without inspecting live processes.
+    init(pid: pid_t, bundleID: String, enclosingBundleID: String?,
+         responsiblePID: pid_t?, responsibleBundleID: String?) {
+        if !bundleID.isEmpty, let enclosingBundleID {
+            key = enclosingBundleID
+            self.bundleID = enclosingBundleID
+            self.pid = responsibleBundleID == enclosingBundleID ? (responsiblePID ?? pid) : pid
+        } else if !bundleID.isEmpty, let responsiblePID, responsiblePID != pid {
+            (key, self.pid, self.bundleID) = (responsibleBundleID ?? "pid:\(responsiblePID)", responsiblePID, responsibleBundleID ?? "")
         } else {
-            key = process.bundleID.isEmpty ? "pid:\(process.pid)" : process.bundleID
-            pid = process.pid
-            bundleID = process.bundleID
+            key = bundleID.isEmpty ? "pid:\(pid)" : bundleID
+            self.pid = pid
+            self.bundleID = bundleID
         }
     }
 
@@ -44,9 +56,8 @@ struct AppOwner {
     /// From the running app, or else from the outermost .app bundle around its executable.
     private static func bundleID(of pid: pid_t) -> String? {
         if let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier { return bundleID }
-        guard let path = ProcessIdentity.executablePath(of: pid),
-              let range = path.range(of: ".app/") else { return nil }
-        return Bundle(path: String(path[..<range.lowerBound]) + ".app")?.bundleIdentifier
+        return ProcessIdentity.executablePath(of: pid).flatMap(ProcessIdentity.enclosingAppURL)
+            .flatMap { Bundle(url: $0)?.bundleIdentifier }
     }
 
     private static func responsiblePID(for pid: pid_t) -> pid_t? {
