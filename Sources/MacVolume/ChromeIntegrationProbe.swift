@@ -61,17 +61,23 @@ enum ChromeIntegrationProbe {
                     guard let id = command["tabID"] as? Int,
                           let tab = chrome.tabs.first(where: { $0.id == id }),
                           chrome.connected, chrome.pending[id] == nil else { throw SpikeError("Tab is unavailable or awaiting confirmation.") }
-                    if let playback = command["playback"] as? String, command["volume"] == nil, command["muted"] == nil {
+                    if let transport = command["transport"] as? String, command["volume"] == nil, command["muted"] == nil, command["playback"] == nil {
+                        let supported = (transport == "next" && tab.canNext == true) ||
+                            (transport == "previous" && tab.canPrevious == true) ||
+                            (["shuffle-on", "shuffle-off"].contains(transport) && tab.canShuffle == true && tab.shuffleEnabled != nil)
+                        guard supported else { throw SpikeError("Track control unavailable for this player.") }
+                        chrome.setTransport(transport, for: tab)
+                    } else if let playback = command["playback"] as? String, command["volume"] == nil, command["muted"] == nil, command["transport"] == nil {
                         guard (playback == "play" && tab.canPlay == true) || (playback == "pause" && tab.canPause == true) else {
                             throw SpikeError("Playback unavailable for this player.")
                         }
                         chrome.setPlayback(playback, for: tab)
-                    } else if let volume = command["volume"] as? Double, volume.isFinite, (0...1).contains(volume), command["muted"] == nil, command["playback"] == nil {
+                    } else if let volume = command["volume"] as? Double, volume.isFinite, (0...1).contains(volume), command["muted"] == nil, command["playback"] == nil, command["transport"] == nil {
                         guard tab.controlled else { throw SpikeError("Volume unavailable for this player.") }
                         chrome.setVolume(volume, for: tab)
-                    } else if let muted = command["muted"] as? Bool, command["volume"] == nil, command["playback"] == nil {
+                    } else if let muted = command["muted"] as? Bool, command["volume"] == nil, command["playback"] == nil, command["transport"] == nil {
                         if muted != tab.muted { chrome.toggleMute(tab) }
-                    } else { throw SpikeError("Supply exactly one of volume, muted or playback for a tab.") }
+                    } else { throw SpikeError("Supply exactly one of volume, muted, playback or transport for a tab.") }
                 case "meters":
                     guard mixer.tapMeters(for: browserKey) != nil else { throw SpikeError("No native test-browser tap. Set master below 100% first.") }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {

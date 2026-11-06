@@ -12,7 +12,7 @@
   const listeners = new WeakSet(), observedRoots = new WeakSet();
   function announce(requestID, error) {
     if (!bridgeID) return;
-    window.postMessage({ channel, direction: "page", bridgeID, requestID, state: controller.state(),
+    window.postMessage({ channel, direction: "page", bridgeID, requestID, state: { ...controller.state(), ...transport.state() },
       ...(error ? { error } : {}) }, location.origin);
   }
   function changed() {
@@ -29,6 +29,9 @@
     play: element => nativePlay.call(element), pause: element => nativePause.call(element),
     changed
   });
+  const Transport = window[Symbol.for("MacVolume.TransportController")];
+  const transport = Transport ? new Transport({ document, hostname: location.hostname,
+    topFrame: window.top === window, changed }) : { state: () => ({}) };
   function track(element) {
     controller.track(element);
     if (listeners.has(element)) return;
@@ -74,7 +77,12 @@
     if (typeof message.bridgeID !== "string" || message.bridgeID.length > 80) return;
     if (message.type === "init") bridgeID = message.bridgeID;
     if (message.bridgeID !== bridgeID) return;
-    if (message.type === "playback") {
+    if (message.type === "transport") {
+      if (!["previous", "next", "shuffle-on", "shuffle-off"].includes(message.action) || !transport.set) return;
+      try { await transport.set(message.action); announce(message.requestID); }
+      catch (error) { announce(message.requestID, String(error.message).slice(0, 512)); }
+      return;
+    } else if (message.type === "playback") {
       if (!["play", "pause"].includes(message.action) || typeof message.allowFallback !== "boolean") return;
       try { await controller.setPlayback(message.action, message.allowFallback); announce(message.requestID); }
       catch (error) { announce(message.requestID, String(error.message).slice(0, 512)); }

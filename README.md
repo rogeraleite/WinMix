@@ -9,7 +9,7 @@ compatible players individual volume, mute and play/pause controls. Paused tabs 
 available. The slider stays responsive during dragging and confirms the last requested gain.
 Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-**Update an existing installation:** reopen MacVolume 0.6.0, reload **MacVolume Tabs** at
+**Update an existing installation:** reopen MacVolume 0.7.0, reload **MacVolume Tabs** at
 `chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
 and HTTP/HTTPS host access so it can discover audio tabs and control their players.
 It does not capture audio or send page content to external services. Existing pages may
@@ -94,6 +94,12 @@ Use `--style ceramic` to export the alternative speaker-cone icon.
 The same script exports the Chrome extension icons at 16, 32, 48 and 128 pixels. Use
 `python3 scripts/make-icon.py --chrome-only` to regenerate only those PNGs, then reload the
 unpacked extension in Chrome to refresh its toolbar and extension-manager icons.
+
+Version 0.7.0 adds **previous**, **next** and a confirmed **shuffle on/off** toggle for
+YouTube Music, plus previous/next where YouTube's player offers them. These controls appear
+in both styles when available. They use the site's queue and preserve the tab's volume/mute.
+Previous follows the website's behavior and may restart the current track. Reload the updated
+extension and existing YouTube pages once; other sites keep their existing playback controls.
 
 To check the look without opening the app or touching audio, render the window to PNGs:
 

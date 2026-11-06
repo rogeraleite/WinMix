@@ -5,6 +5,38 @@ import ChromeSupport
 
 final class ChromeTabModelTests: XCTestCase {
     @MainActor
+    func testTrackControlUsesCapabilitiesAndWaitsForConfirmedShuffle() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = ChromeTabModel(socketPath: directory.appendingPathComponent("track.sock").path)
+        defer { model.stop(); try? FileManager.default.removeItem(at: directory) }
+        let fd = try LocalSocket.connect(path: directory.appendingPathComponent("track.sock").path)
+        defer { close(fd) }
+        var state = sliderState()
+        var tabs = state["tabs"] as! [[String: Any]]
+        tabs[0]["canNext"] = true; tabs[0]["canPrevious"] = false
+        tabs[0]["canShuffle"] = true; tabs[0]["shuffleEnabled"] = false
+        state["tabs"] = tabs; try write(state, to: fd)
+        try await until { model.connected && model.tabs.count == 2 }
+        let tab = model.tabs[0]
+        model.setTransport("previous", for: tab)
+        XCTAssertTrue(model.pending.isEmpty)
+        model.setTransport("shuffle-on", for: tab)
+        let command = try await readCommand(fd)
+        XCTAssertEqual(command.type, "transport"); XCTAssertEqual(command.action, "shuffle-on")
+        XCTAssertNil(command.volume); XCTAssertNil(command.muted)
+        XCTAssertEqual(model.tabs[0].shuffleEnabled, false)
+        model.setTransport("next", for: tab)
+        XCTAssertEqual(model.pending[tab.id], command.requestID)
+        tabs[0]["shuffleEnabled"] = true; state["tabs"] = tabs; state["requestID"] = command.requestID
+        try write(state, to: fd)
+        try await until { model.pending.isEmpty }
+        XCTAssertEqual(model.tabs[0].shuffleEnabled, true)
+        XCTAssertEqual(model.tabs[0].volume, 1)
+        model.setTransport("next", for: tab)
+        let next = try await readCommand(fd)
+        XCTAssertEqual(next.action, "next")
+    }
+    @MainActor
     func testSliderCoalescesLatestGainWithoutBlockingAnotherTab() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let path = directory.appendingPathComponent("slider.sock").path

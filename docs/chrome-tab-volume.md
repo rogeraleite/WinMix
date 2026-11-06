@@ -1,6 +1,6 @@
 # Volume individual por aba do Chrome
 
-App 0.6.0 e extensão 0.5.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
+App e extensão 0.7.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
 
 O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
 `chrome://extensions`, a pasta da extensão e um comando de conexão preenchido com o
@@ -13,11 +13,24 @@ continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho ind
 
 ## Atualizar a instalação existente
 
-1. Abra o MacVolume 0.6.0. O app novo deve estar aberto antes da extensão nova.
+1. Abra o MacVolume 0.7.0. O app novo deve estar aberto antes da extensão nova.
 2. Em `chrome://extensions`, recarregue **MacVolume Tabs**, na pasta originalmente instalada.
 3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
 4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,
    confira o acesso ao site e recarregue essa página uma vez.
+
+## Anterior, próxima e aleatório
+
+No YouTube Music, os controles de faixa usam a fila do próprio player: anterior, próxima e
+aleatório ligado/desligado. No YouTube, anterior/próxima aparecem quando disponíveis no
+player. Os dois estilos exibem os mesmos controles e o mesmo estado confirmado. O botão
+anterior pode reiniciar a música atual, conforme o comportamento do site.
+
+O modo aleatório só fica disponível se o site informar seu estado. Cliques enviam o destino
+explícito ligado/desligado; repetir o mesmo destino não alterna a fila novamente. Trocar
+faixa preserva ganho e mute, e um comando sem confirmação informa a falha sem repetir o
+clique. Sites sem suporte mantêm volume, mute e play/pause. Após atualizar a extensão,
+recarregue uma vez as páginas do YouTube/YouTube Music já abertas.
 
 O ID e o registro da ponte permanecem válidos na mesma pasta e caminho do app. Reconnect,
 no popup, tenta novamente a conexão com o app. Não há ativação por aba. A configuração

@@ -103,6 +103,21 @@ final class ChromeTabModel: ObservableObject {
         }
     }
 
+    func setTransport(_ action: String, for tab: ChromeTab) {
+        guard let current = tabs.first(where: { $0.id == tab.id }) else { return }
+        let supported: Bool
+        switch action {
+        case "previous": supported = current.canPrevious == true
+        case "next": supported = current.canNext == true
+        case "shuffle-on", "shuffle-off": supported = current.canShuffle == true && current.shuffleEnabled != nil
+        default: return
+        }
+        guard supported else { return }
+        sendRequest(for: current) { session, request in
+            BridgeMessage(type: "transport", session: session, requestID: request, tabID: current.id, action: action)
+        }
+    }
+
     private func send(_ tab: ChromeTab, volume: Double, muted: Bool) {
         guard tab.controlled || tab.canMute == true, volume.isFinite else { return }
         sendRequest(for: tab) { session, request in

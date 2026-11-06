@@ -3,6 +3,23 @@ import Darwin
 @testable import ChromeSupport
 
 final class TransportTests: XCTestCase {
+    func testTrackCommandsAndConfirmedShuffleAreBackwardCompatibleAndStrict() throws {
+        for action in ["previous", "next", "shuffle-on", "shuffle-off"] {
+            let command = BridgeMessage(type: "transport", session: "s", requestID: "r", tabID: 1, action: action)
+            XCTAssertEqual(try BridgeMessage.decode(command.encoded()).action, action)
+        }
+        for json in [
+            #"{"version":1,"type":"transport","session":"s","requestID":"r","tabID":1,"action":"shuffle"}"#,
+            #"{"version":1,"type":"transport","session":"s","requestID":"r","tabID":1,"action":"next","volume":0.4}"#,
+            #"{"version":1,"type":"transport","session":"s","requestID":"r","tabID":1,"action":"next","muted":false}"#,
+            #"{"version":1,"type":"transport","session":"s","requestID":"r","tabID":1}"#,
+            #"{"version":1,"type":"playback","session":"s","requestID":"r","tabID":1,"action":"next"}"#
+        ] { XCTAssertThrowsError(try BridgeMessage.decode(Data(json.utf8))) }
+        let json = #"{"version":1,"type":"state","session":"s","tabs":[{"id":1,"title":"Music","domain":"music.youtube.com","audible":true,"controlled":true,"volume":0.4,"muted":false,"canNext":true,"canPrevious":false,"canShuffle":true,"shuffleEnabled":false}]}"#
+        let tab = try XCTUnwrap(BridgeMessage.decode(Data(json.utf8)).tabs?.first)
+        XCTAssertEqual(tab.canNext, true); XCTAssertEqual(tab.canPrevious, false); XCTAssertEqual(tab.shuffleEnabled, false)
+        XCTAssertThrowsError(try BridgeMessage.decode(Data(json.replacingOccurrences(of: ",\"shuffleEnabled\":false", with: "").utf8)))
+    }
     func testExplicitPlaybackCommandsAndLegacyCapabilities() throws {
         let command = BridgeMessage(type: "playback", session: "s", requestID: "r", tabID: 1, action: "pause")
         let decoded = try BridgeMessage.decode(command.encoded())

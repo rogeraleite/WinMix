@@ -48,3 +48,19 @@ test("frame state validates playback counts and capabilities while accepting leg
   }
   assert.equal(validPlayerState({ ...legacy, canPlay: true }), false);
 });
+
+test("track commands and shuffle states are validated without volume or mute writes", () => {
+  const command = { version: 1, type: "transport", session: "s", requestID: "r", tabID: 1, action: "next" };
+  for (const action of ["next", "previous", "shuffle-on", "shuffle-off"]) assert.equal(validCommand({ ...command, action }), true);
+  for (const change of [{ action: "shuffle" }, { action: "play" }, { volume: 1 }, { muted: false }, { action: undefined }]) {
+    assert.equal(validCommand({ ...command, ...change }), false);
+  }
+  const state = { volume: 0.3, mediaCount: 1, playingCount: 1, audibleCount: 1, canPlay: true, canPause: true,
+    resumeCount: 0, canNext: true, canPrevious: false, canShuffle: true, shuffleEnabled: false };
+  assert.equal(validPlayerState(state), true);
+  for (const change of [{ canNext: 1 }, { shuffleEnabled: undefined }, { shuffleEnabled: "false" }, { transportIssue: "x".repeat(513) }]) {
+    assert.equal(validPlayerState({ ...state, ...change }), false);
+  }
+  const tab = tabMetadata({ id: 1 }, state);
+  assert.equal(tab.canNext, true); assert.equal(tab.canPrevious, false); assert.equal(tab.shuffleEnabled, false);
+});

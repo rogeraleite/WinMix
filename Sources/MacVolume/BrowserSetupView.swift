@@ -130,6 +130,8 @@ struct BrowserSetupView: View {
                         Text("Reload MacVolume Tabs in chrome://extensions using its original folder and ID, approve site access, then reload older pages if needed. Repeat the connection step only if the app path or extension ID changed.")
                         Text("The Chrome app slider is the master for all tabs. Compatible audio/video players get volume, mute and play/pause. Other audio sources may offer mute only.")
                             .foregroundStyle(Ceramic.secondary)
+                        Text("YouTube Music also offers previous, next and shuffle when its player supports them. After updating MacVolume Tabs, reload the music page once to enable new track controls.")
+                            .foregroundStyle(Ceramic.secondary)
                     }
                     if let openError { Text(openError).foregroundStyle(Ceramic.blue) }
                 }

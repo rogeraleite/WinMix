@@ -58,12 +58,24 @@ function tone(frequency) {
 const tone440 = tone(440), tone660 = tone(660);
 function fixture(url) {
   const music = new URL(url).hostname === "music.youtube.com";
+  const wiz = music && url.includes("wiz-fixture");
   if (url.includes("unsupported")) return `<!doctype html><title>Unsupported player fixture</title><script>
     window.context=new AudioContext(); const source=context.createOscillator(),gain=context.createGain();
     gain.gain.value=0.001; source.connect(gain).connect(context.destination); source.start(); context.resume();</script>`;
   return `<!doctype html><title>MacVolume automatic fixture ${music ? "music" : "video"}</title>
     <video id="player" loop src="${music ? tone660 : tone440}"></video>
-    <script>const p=document.querySelector('video'); p.volume=${music ? "0.6" : "0.8"}; p.play();</script>`;
+    ${music ? wiz ? `<ytmusic-miniplayer><ytmusic-wiz-player-controls>
+      <button aria-label="Previous song">Previous</button><button aria-label="Next song">Next</button>
+      <button aria-label="Shuffle" aria-pressed="false">Shuffle</button></ytmusic-wiz-player-controls></ytmusic-miniplayer>` : `<ytmusic-player-bar>
+      <button class="previous-button">Previous</button><button class="next-button">Next</button>
+      <button class="shuffle" aria-pressed="false">Shuffle</button></ytmusic-player-bar>` : ""}
+    <script>const p=document.querySelector('video'); p.volume=${music ? "0.6" : "0.8"}; p.play();
+    ${music ? `let track=1; window.shuffleClicks=0;
+      const previous=document.querySelector('.previous-button, [aria-label="Previous song"]'), next=document.querySelector('.next-button, [aria-label="Next song"]'), shuffle=document.querySelector('.shuffle, [aria-label="Shuffle"]');
+      function updateTrack(){document.title='Fixture track '+track;previous.disabled=track===0;next.disabled=track===2;}
+      previous.onclick=()=>{track--;updateTrack();};next.onclick=()=>{track++;updateTrack();};
+      shuffle.onclick=()=>{window.shuffleClicks++;shuffle.setAttribute('aria-pressed',String(shuffle.getAttribute('aria-pressed')!=='true'));};` : ""}
+    </script>`;
 }
 try {
   await fs.access(extensionPath);
@@ -150,6 +162,18 @@ try {
       assert.equal(result.type, expectedError ? "error" : "state", result.error);
     }
   }
+  async function transport(tab, action) {
+    if (nativeMode) {
+      await native.request({ action: "tab", tabID: tab.id, transport: action });
+      await until(() => latest.pending === 0, "confirmed native track control");
+      assert.equal(latest.chromeError, "");
+    } else {
+      const requestID = crypto.randomUUID();
+      client.write(frame({ version: 1, type: "transport", session: latest.session, requestID, tabID: tab.id, action }));
+      const result = await until(() => responses.get(requestID), "confirmed track control");
+      assert.equal(result.type, "state", result.error);
+    }
+  }
   async function paused(page, value, selector = "#player") {
     assert.equal(await page.evaluate(selector => document.querySelector(selector).paused, selector), value);
   }
@@ -179,6 +203,28 @@ try {
   await outside.evaluate(() => document.querySelector("#player").pause());
   await command(first, 0.3, false); await command(second, 0.7, false);
   await player(one, 0.24); await player(two, 0.42);
+  await until(() => latest.tabs.find(t => t.id === second.id)?.canShuffle === true, "music track controls discovered");
+  await transport(second, "next");
+  assert.equal(await two.title(), "Fixture track 2");
+  assert.equal(latest.tabs.find(t => t.id === second.id).canNext, false);
+  await transport(second, "previous");
+  assert.equal(await two.title(), "Fixture track 1");
+  await transport(second, "shuffle-on"); await transport(second, "shuffle-on");
+  assert.equal(latest.tabs.find(t => t.id === second.id).shuffleEnabled, true);
+  assert.equal(await two.evaluate(() => window.shuffleClicks), 1, "Repeated explicit shuffle-on is a no-op");
+  await transport(second, "shuffle-off");
+  assert.equal(latest.tabs.find(t => t.id === second.id).shuffleEnabled, false);
+  assert.equal(await two.evaluate(() => window.shuffleClicks), 2);
+  await player(one, 0.24); await player(two, 0.42);
+  assert.equal(latest.tabs.find(t => t.id === first.id).volume, 0.3);
+  assert.equal(latest.tabs.find(t => t.id === second.id).volume, 0.7);
+  const wiz = await context.newPage();
+  await wiz.goto("https://music.youtube.com/watch?v=wiz-fixture");
+  const wizTab = await until(() => latest.tabs.find(t => t.domain === "music.youtube.com" && t.id !== second.id && t.canShuffle), "new-layout controls discovered");
+  await transport(wizTab, "next"); assert.equal(await wiz.title(), "Fixture track 2");
+  await transport(wizTab, "shuffle-on");
+  assert.equal(latest.tabs.find(t => t.id === wizTab.id).shuffleEnabled, true);
+  await wiz.close();
   await until(() => latest.tabs.find(t => t.id === first.id)?.canPause === true, "playback capability");
   await playback(first, "pause");
   await paused(one, true); await paused(two, false);
@@ -367,7 +413,7 @@ try {
   await paused(one, false); // Shutdown restores gain without stopping playback.
   await until(async () => (await shutdownPage.evaluate(() => window[Symbol.for("MacVolume.PageController")].controller.gain)) === 1, "paused tab gain restored at shutdown");
   await player(shutdownPage, 0.8); await paused(shutdownPage, true);
-  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): HTTP/HTTPS sites, independent gains and play/pause, muted/zero-volume playback, resume targeting, rejected Play, website state, cross-site navigation, reload and shutdown. No per-tab activation.`);
+  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): HTTP/HTTPS sites, independent gains, play/pause, previous/next, idempotent confirmed shuffle, muted/zero-volume playback, resume targeting, rejected Play, website state, cross-site navigation, reload and shutdown. No per-tab activation.`);
 } finally {
   await context?.close(); await native?.close(); client?.destroy();
   if (listening) server.close();

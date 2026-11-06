@@ -10,6 +10,9 @@
     window.postMessage({ channel, direction: "bridge", bridgeID, type, volume, requestID, action, allowFallback }, location.origin);
   }
   function validPlayback(state) {
+    if (!["canPrevious", "canNext", "canShuffle", "shuffleEnabled"].every(key => state[key] === undefined || typeof state[key] === "boolean") ||
+        (state.transportIssue !== undefined && (typeof state.transportIssue !== "string" || state.transportIssue.length > 512)) ||
+        (state.canShuffle === true && typeof state.shuffleEnabled !== "boolean")) return false;
     if (state.audibleCount === undefined) return ["canPlay", "canPause", "resumeCount", "playbackIssue"].every(key => state[key] === undefined);
     return Number.isInteger(state.audibleCount) && state.audibleCount >= 0 && state.audibleCount <= state.playingCount &&
       typeof state.canPlay === "boolean" && typeof state.canPause === "boolean" &&
@@ -24,7 +27,8 @@
         !Number.isInteger(state.mediaCount) || state.mediaCount < 0 || state.mediaCount > 10000 ||
         !Number.isInteger(state.playingCount) || state.playingCount < 0 || state.playingCount > state.mediaCount || !validPlayback(state) ||
         (message.error !== undefined && (typeof message.error !== "string" || message.error.length > 512))) return;
-    const same = lastState && ["volume", "mediaCount", "playingCount", "audibleCount", "canPlay", "canPause", "resumeCount", "playbackIssue"]
+    const same = lastState && ["volume", "mediaCount", "playingCount", "audibleCount", "canPlay", "canPause", "resumeCount", "playbackIssue",
+      "canPrevious", "canNext", "canShuffle", "shuffleEnabled", "transportIssue"]
       .every(key => lastState[key] === state[key]);
     lastState = state;
     if (same && !message.requestID) return;
@@ -39,7 +43,8 @@
       port = chrome.runtime.connect({ name: "macvolume-media" });
       port.onMessage.addListener(message => {
         if (message.type === "outOfScope") { if (initialized) post("reset"); dispose(); return; }
-        if (!["init", "set", "reset", "state", "playback"].includes(message.type)) return;
+        if (!["init", "set", "reset", "state", "playback", "transport"].includes(message.type)) return;
+        if (message.type === "transport" && !["previous", "next", "shuffle-on", "shuffle-off"].includes(message.action)) return;
         if (message.type === "playback" && (!["play", "pause"].includes(message.action) || typeof message.allowFallback !== "boolean")) return;
         if (message.type === "init") initialized = true;
         if (message.requestID) waiting.set(message.requestID, setTimeout(() => {

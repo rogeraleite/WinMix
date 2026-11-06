@@ -7,6 +7,8 @@ export function validCommand(message) {
     typeof message.requestID === "string" && message.requestID.length > 0 && message.requestID.length <= 80 &&
     Number.isSafeInteger(message.tabID) && message.tabID >= 0;
   if (!envelope) return false;
+  if (message.type === "transport") return ["previous", "next", "shuffle-on", "shuffle-off"].includes(message.action) &&
+    message.volume === undefined && message.muted === undefined;
   if (message.type === "playback") return ["play", "pause"].includes(message.action) &&
     message.volume === undefined && message.muted === undefined;
   return message.type === "set" && message.action === undefined &&
@@ -18,6 +20,9 @@ export function validPlayerState(state) {
   if (!state || typeof state.volume !== "number" || !Number.isFinite(state.volume) || state.volume < 0 || state.volume > 1 ||
       !Number.isInteger(state.mediaCount) || state.mediaCount < 0 || state.mediaCount > 10000 ||
       !Number.isInteger(state.playingCount) || state.playingCount < 0 || state.playingCount > state.mediaCount) return false;
+  if (!["canPrevious", "canNext", "canShuffle", "shuffleEnabled"].every(key => state[key] === undefined || typeof state[key] === "boolean") ||
+      (state.transportIssue !== undefined && (typeof state.transportIssue !== "string" || state.transportIssue.length > 512)) ||
+      (state.canShuffle === true && typeof state.shuffleEnabled !== "boolean")) return false;
   // Old page controllers keep their volume support until the document is reloaded.
   if (state.audibleCount === undefined) return ["canPlay", "canPause", "resumeCount", "playbackIssue"].every(key => state[key] === undefined);
   return Number.isInteger(state.audibleCount) && state.audibleCount >= 0 && state.audibleCount <= state.playingCount &&
@@ -36,7 +41,7 @@ export function tabMetadata(tab, control) {
     ...(control?.issue ? { issue: control.issue } : {}),
     ...(control?.canMute ? { canMute: true } : {}),
     ...(control?.controlMode ? { controlMode: control.controlMode } : {}),
-    ...Object.fromEntries(["playing", "canPlay", "canPause", "playbackIssue"]
+    ...Object.fromEntries(["playing", "canPlay", "canPause", "playbackIssue", "canPrevious", "canNext", "canShuffle", "shuffleEnabled", "transportIssue"]
       .filter(key => control?.[key] !== undefined).map(key => [key, control[key]]))
   };
 }

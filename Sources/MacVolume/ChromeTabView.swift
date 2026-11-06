@@ -55,7 +55,8 @@ struct ChromeTabsView: View {
                                  displayedVolume: model.requestedVolumes[tab.id] ?? tab.volume,
                                  setVolume: { model.setVolume($0, for: tab) },
                                  toggleMute: { model.toggleMute(tab) },
-                                 togglePlayback: { model.setPlayback(tab.playing == true ? "pause" : "play", for: tab) })
+                                 togglePlayback: { model.setPlayback(tab.playing == true ? "pause" : "play", for: tab) },
+                                 setTransport: { model.setTransport($0, for: tab) })
                 }
             }
             if let error = model.error {
@@ -77,12 +78,14 @@ private struct ChromeTabRow: View {
     let setVolume: (Double) -> Void
     let toggleMute: () -> Void
     let togglePlayback: () -> Void
+    let setTransport: (String) -> Void
 
     private var enabled: Bool { connected && tab.controlled }
     private var canTogglePlayback: Bool { tab.playing == true ? tab.canPause == true : tab.canPlay == true }
     private var isCeramic: Bool { appearance == .ceramic }
     private var accent: Color { isCeramic ? Ceramic.blue : Skin.green }
     private var secondary: Color { isCeramic ? Ceramic.secondary : Skin.bevelHighlight }
+    private var hasTrackControls: Bool { tab.canPrevious == true || tab.canNext == true || tab.canShuffle == true }
 
     var body: some View {
         Group {
@@ -117,11 +120,24 @@ private struct ChromeTabRow: View {
                     .foregroundStyle(isCeramic ? Ceramic.secondary : Skin.amber)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let issue = tab.transportIssue {
+                Text(issue).font(.system(size: 9))
+                    .foregroundStyle(isCeramic ? Ceramic.secondary : Skin.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if tab.domain == "music.youtube.com" && tab.canNext == nil {
+                Text("Reload MacVolume Tabs and this page to enable track controls.")
+                    .font(.system(size: 9))
+                    .foregroundStyle(isCeramic ? Ceramic.secondary : Skin.amber)
+            }
         }
     }
 
     private var controls: some View {
         HStack(spacing: 8) {
+            if hasTrackControls {
+                trackButton("previous", symbol: "backward.end.fill", label: "Previous track", supported: tab.canPrevious == true)
+            }
             Button(action: togglePlayback) {
                 Image(systemName: tab.playing == true ? "pause.fill" : "play.fill")
                     .foregroundStyle(canTogglePlayback ? accent : secondary)
@@ -132,6 +148,15 @@ private struct ChromeTabRow: View {
                 ? (tab.playing == true ? "Pause this tab" : "Resume this tab")
                 : "Playback unavailable; start the player on the website once. Older pages may need a reload."))
             .disabled(!connected || pending || !canTogglePlayback)
+
+            if hasTrackControls {
+                trackButton("next", symbol: "forward.end.fill", label: "Next track", supported: tab.canNext == true)
+                if tab.canShuffle == true, let shuffled = tab.shuffleEnabled {
+                    trackButton(shuffled ? "shuffle-off" : "shuffle-on", symbol: "shuffle",
+                                label: shuffled ? "Turn shuffle off" : "Turn shuffle on", supported: true, selected: shuffled)
+                        .accessibilityValue(shuffled ? "On" : "Off")
+                }
+            }
 
             Button(action: toggleMute) {
                 Image(systemName: tab.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
@@ -162,6 +187,18 @@ private struct ChromeTabRow: View {
                 Spacer(minLength: 0)
             }
         }
+    }
+
+    private func trackButton(_ action: String, symbol: String, label: String, supported: Bool, selected: Bool = false) -> some View {
+        Button { setTransport(action) } label: {
+            Image(systemName: symbol)
+                .foregroundStyle(selected ? accent : supported ? (isCeramic ? Ceramic.ink : .white) : secondary)
+                .opacity(supported ? 1 : 0.35)
+        }
+        .buttonStyle(TabControlStyle(appearance: appearance))
+        .accessibilityLabel("\(label): \(tab.title), tab \(tab.id)")
+        .help(action == "previous" ? "Previous track; the player may restart the current track" : label)
+        .disabled(!connected || pending || !supported)
     }
 
     private var stateText: String {

@@ -104,6 +104,7 @@ async function state(requestID) {
     const resumeTargets = playback.some(frame => frame.state.resumeCount > 0);
     const canPlay = resumeTargets || playback.some(frame => frame.frameID === 0 && frame.state.canPlay);
     const playbackIssue = playback.find(frame => frame.state.playbackIssue)?.state.playbackIssue;
+    const transport = controllers.find(frame => frame.frameID === 0)?.state;
     if ((tab.audible || playing) && !value.seen) { value.seen = true; changed = true; }
     if (!value.seen && value.volume === 1) continue;
     const hasPlayer = controllers.some(frame => frame.state.mediaCount > 0);
@@ -114,6 +115,8 @@ async function state(requestID) {
       canMute: true, controlMode: "page", volume: value.volume,
       muted: Boolean(tab.mutedInfo?.muted), audible: !tab.mutedInfo?.muted && (audible || Boolean(tab.audible)),
       playing, canPlay, canPause: !legacyActive && playback.some(frame => frame.state.canPause),
+      ...Object.fromEntries(["canPrevious", "canNext", "canShuffle", "shuffleEnabled", "transportIssue"]
+        .filter(key => transport?.[key] !== undefined).map(key => [key, transport[key]])),
       ...(playbackIssue ? { playbackIssue } : (playback.length === 0 && hasPlayer) || legacyActive
         ? { playbackIssue: "Reload this page once to enable play/pause with the updated extension." } : {}),
       ...(!supportedURL(tab.url) ? { issue: "Chrome restricts volume scripts on this page; tab mute is available." }
@@ -147,6 +150,15 @@ async function apply(message) {
   if (tab.incognito) throw new Error("Incognito tabs are outside automatic controls.");
   const value = setting(tab.id), previous = value.volume;
   const controllers = tabFrames(tab.id).filter(frame => frame.ready);
+  if (message.type === "transport") {
+    const frame = controllers.find(frame => frame.frameID === 0);
+    const capability = message.action === "next" ? "canNext" : message.action === "previous" ? "canPrevious" : "canShuffle";
+    if (!frame || frame.state?.[capability] !== true) throw new Error("Track control unavailable. Update the extension and reload this player page once.");
+    try { await sendFrame(frame, "transport", undefined, message.action); }
+    catch (error) { await publish(); throw error; }
+    await publish(message.requestID);
+    return;
+  }
   if (message.type === "playback") {
     const capable = controllers.filter(frame => typeof frame.state?.canPlay === "boolean");
     if (!capable.length) throw new Error("Playback unavailable. Reload this player page once after updating the extension.");
@@ -219,7 +231,7 @@ async function bootstrap(tab) {
   try {
     // Bootstrap existing top-level players even if an ad iframe has a different origin.
     // New authorized child frames receive the declared all_frames content scripts.
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", files: ["media-controller.js", "page-controller.js"] });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", files: ["media-controller.js", "transport-controller.js", "page-controller.js"] });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content-bridge.js"] });
   } catch { bootstrapErrors.set(tab.id, "Allow MacVolume Tabs access to this site, then reload this page once."); }
 }
