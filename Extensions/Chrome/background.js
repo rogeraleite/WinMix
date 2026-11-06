@@ -1,4 +1,4 @@
-import { HOST, VERSION, validCommand, tabMetadata } from "./protocol.js";
+import { HOST, VERSION, validCommand, validPlayerState, tabMetadata } from "./protocol.js";
 import { SITE_PATTERNS, supportedURL } from "./scope.js";
 
 const frames = new Map(), settings = new Map(), requests = new Map(), bootstrapErrors = new Map();
@@ -28,13 +28,13 @@ function report(error, requestID) {
   lastError = String(error.message || error).slice(0, 1024);
   post({ version: VERSION, type: "error", requestID, error: lastError });
 }
-function sendFrame(frame, type, volume) {
+function sendFrame(frame, type, volume, action, allowFallback = false) {
   if (frame.closed) return Promise.reject(new Error("The YouTube page changed. Try the control again."));
   const requestID = crypto.randomUUID();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { requests.delete(requestID); reject(new Error("YouTube player did not confirm the control. Reload this page once.")); }, 3500);
     requests.set(requestID, { frame, resolve, reject, timer });
-    try { frame.port.postMessage({ type, volume, requestID }); }
+    try { frame.port.postMessage({ type, volume, requestID, action, allowFallback }); }
     catch { clearTimeout(timer); requests.delete(requestID); reject(new Error("YouTube controller disconnected.")); }
   });
 }
@@ -46,11 +46,6 @@ function dropFrame(frame) {
   for (const [id, item] of requests) if (item.frame === frame) {
     clearTimeout(item.timer); requests.delete(id); item.reject(new Error("The YouTube page changed during the command."));
   }
-}
-function validState(state) {
-  return state && typeof state.volume === "number" && Number.isFinite(state.volume) && state.volume >= 0 && state.volume <= 1 &&
-    Number.isInteger(state.mediaCount) && state.mediaCount >= 0 && state.mediaCount <= 10000 &&
-    Number.isInteger(state.playingCount) && state.playingCount >= 0 && state.playingCount <= state.mediaCount;
 }
 chrome.runtime.onConnect.addListener(controllerPort => {
   const sender = controllerPort.sender;
@@ -69,9 +64,13 @@ chrome.runtime.onConnect.addListener(controllerPort => {
       if (item?.frame === frame) { clearTimeout(item.timer); requests.delete(message.requestID); item.reject(new Error(String(message.error).slice(0, 512))); }
       return;
     }
-    if (message.type !== "state" || !validState(message.state)) return;
+    if (message.type !== "state" || !validPlayerState(message.state) ||
+        (message.error !== undefined && (typeof message.error !== "string" || message.error.length > 512))) return;
     frame.state = message.state;
-    if (item?.frame === frame) { clearTimeout(item.timer); requests.delete(message.requestID); item.resolve(message.state); }
+    if (item?.frame === frame) {
+      clearTimeout(item.timer); requests.delete(message.requestID);
+      if (message.error) item.reject(new Error(message.error)); else item.resolve(message.state);
+    }
     else if (frame.ready) publish().catch(error => report(error));
   });
   (async () => {
@@ -97,13 +96,21 @@ async function state(requestID) {
     if (tab.incognito || !supportedURL(tab.url)) continue;
     const value = setting(tab.id), controllers = tabFrames(tab.id).filter(frame => frame.ready && frame.state);
     const playing = controllers.some(frame => frame.state.playingCount > 0);
+    const audible = controllers.some(frame => (frame.state.audibleCount ?? frame.state.playingCount) > 0);
+    const playback = controllers.filter(frame => typeof frame.state.canPlay === "boolean");
+    const resumeTargets = playback.some(frame => frame.state.resumeCount > 0);
+    const canPlay = resumeTargets || playback.some(frame => frame.frameID === 0 && frame.state.canPlay);
+    const playbackIssue = playback.find(frame => frame.state.playbackIssue)?.state.playbackIssue;
     if ((tab.audible || playing) && !value.seen) { value.seen = true; changed = true; }
     if (!value.seen && value.volume === 1) continue;
     const hasPlayer = controllers.some(frame => frame.state.mediaCount > 0);
     const confirmed = controllers.every(frame => Math.abs(frame.state.volume - value.volume) < 1e-9);
     tabs.push(tabMetadata(tab, {
       controlled: hasPlayer && confirmed, canMute: true, controlMode: "page", volume: value.volume,
-      muted: Boolean(tab.mutedInfo?.muted), audible: playing || Boolean(tab.audible),
+      muted: Boolean(tab.mutedInfo?.muted), audible: !tab.mutedInfo?.muted && (audible || Boolean(tab.audible)),
+      playing, canPlay, canPause: playback.some(frame => frame.state.canPause),
+      ...(playbackIssue ? { playbackIssue } : playback.length === 0 && hasPlayer
+        ? { playbackIssue: "Reload this page once to enable play/pause with the updated extension." } : {}),
       ...(!hasPlayer ? { issue: bootstrapErrors.get(tab.id) || (controllers.length > 0
         ? "No supported audio/video player found; tab mute is available."
         : "Waiting for the YouTube controller. If this page was already open during the update, reload it once.") } : {})
@@ -134,6 +141,25 @@ async function apply(message) {
   if (!supportedURL(tab.url) || tab.incognito) throw new Error("Automatic controls are limited to YouTube and YouTube Music.");
   const value = setting(tab.id), previous = value.volume;
   const controllers = tabFrames(tab.id).filter(frame => frame.ready);
+  if (message.type === "playback") {
+    const capable = controllers.filter(frame => typeof frame.state?.canPlay === "boolean");
+    if (!capable.length) throw new Error("Playback unavailable. Reload this YouTube page once after updating the extension.");
+    let targets;
+    if (message.action === "pause") targets = capable.filter(frame => frame.state.canPause);
+    else {
+      targets = capable.filter(frame => frame.state.resumeCount > 0);
+      if (!targets.length && !capable.some(frame => frame.state.playingCount > 0)) {
+        targets = capable.filter(frame => frame.frameID === 0 && frame.state.canPlay);
+        if (!targets.length) throw new Error("No previously active YouTube player is available to resume.");
+      }
+    }
+    const results = await Promise.allSettled(targets.map(frame => sendFrame(frame, "playback", undefined,
+      message.action, message.action === "play" && frame.state.resumeCount === 0 && frame.frameID === 0)));
+    const failure = results.find(result => result.status === "rejected");
+    if (failure) { await publish(); throw failure.reason; }
+    await publish(message.requestID);
+    return;
+  }
   const hasPlayer = controllers.some(frame => frame.state?.mediaCount > 0);
   if (!hasPlayer && Math.abs(message.volume - previous) > 1e-9) throw new Error("The YouTube player is not available for volume control yet.");
   value.desiredVolume = message.volume;

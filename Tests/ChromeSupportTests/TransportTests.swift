@@ -3,6 +3,28 @@ import Darwin
 @testable import ChromeSupport
 
 final class TransportTests: XCTestCase {
+    func testExplicitPlaybackCommandsAndLegacyCapabilities() throws {
+        let command = BridgeMessage(type: "playback", session: "s", requestID: "r", tabID: 1, action: "pause")
+        let decoded = try BridgeMessage.decode(command.encoded())
+        XCTAssertEqual(decoded.action, "pause")
+        XCTAssertNil(decoded.volume)
+        XCTAssertNil(decoded.muted)
+        for json in [
+            #"{"version":1,"type":"playback","session":"s","requestID":"r","tabID":1,"action":"toggle"}"#,
+            #"{"version":1,"type":"playback","session":"s","requestID":"r","tabID":1,"action":"play","volume":0.4}"#,
+            #"{"version":1,"type":"playback","session":"s","requestID":"r","tabID":1,"action":"play","muted":false}"#,
+            #"{"version":1,"type":"set","session":"s","requestID":"r","tabID":1,"volume":0.4,"muted":false,"action":"pause"}"#
+        ] { XCTAssertThrowsError(try BridgeMessage.decode(Data(json.utf8))) }
+        let legacy = Data(#"{"version":1,"type":"state","session":"s","tabs":[{"id":1,"title":"a","domain":"a","audible":true,"controlled":true,"volume":1,"muted":false}]}"#.utf8)
+        XCTAssertNil(try BridgeMessage.decode(legacy).tabs?.first?.canPlay)
+        let modern = Data(#"{"version":1,"type":"state","session":"s","tabs":[{"id":1,"title":"a","domain":"a","audible":false,"controlled":true,"volume":0,"muted":true,"playing":true,"canPlay":false,"canPause":true,"playbackIssue":"Blocked"}]}"#.utf8)
+        let tab = try XCTUnwrap(BridgeMessage.decode(modern).tabs?.first)
+        XCTAssertEqual(tab.playing, true)
+        XCTAssertEqual(tab.canPause, true)
+        XCTAssertEqual(tab.playbackIssue, "Blocked")
+        let oversized = String(data: modern, encoding: .utf8)!.replacingOccurrences(of: "Blocked", with: String(repeating: "x", count: 513))
+        XCTAssertThrowsError(try BridgeMessage.decode(Data(oversized.utf8)))
+    }
     func testOptionalCaptureIssueIsBackwardCompatibleAndBounded() throws {
         let tab: [String: Any] = ["id": 1, "title": "Test", "domain": "example.com", "audible": false,
                                   "controlled": true, "volume": 0.3, "muted": true]

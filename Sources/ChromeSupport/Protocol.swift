@@ -11,6 +11,10 @@ public struct ChromeTab: Codable, Identifiable, Equatable {
     public var issue: String?
     public var canMute: Bool?
     public var controlMode: String?
+    public var playing: Bool?
+    public var canPlay: Bool?
+    public var canPause: Bool?
+    public var playbackIssue: String?
 }
 
 public struct BridgeMessage: Codable {
@@ -24,22 +28,29 @@ public struct BridgeMessage: Codable {
     public var tabs: [ChromeTab]?
     public var error: String?
     public var mode: String?
+    public var action: String?
 
     public init(type: String, session: String? = nil, requestID: String? = nil,
-                tabID: Int? = nil, volume: Double? = nil, muted: Bool? = nil, error: String? = nil) {
+                tabID: Int? = nil, volume: Double? = nil, muted: Bool? = nil, error: String? = nil, action: String? = nil) {
         self.type = type; self.session = session; self.requestID = requestID
         self.tabID = tabID; self.volume = volume; self.muted = muted; self.error = error
+        self.action = action
     }
 
     public func validate() throws {
-        guard version == 1, ["ready", "state", "set", "shutdown", "error"].contains(type),
+        guard version == 1, ["ready", "state", "set", "playback", "shutdown", "error"].contains(type),
               (session?.count ?? 0) <= 80, (requestID?.count ?? 0) <= 80,
-              (error?.count ?? 0) <= 1024, mode == nil || mode == "automatic-youtube" else { throw BridgeError.invalidMessage }
+              (error?.count ?? 0) <= 1024, mode == nil || mode == "automatic-youtube",
+              action == nil || (type == "playback" && ["play", "pause"].contains(action ?? "")) else { throw BridgeError.invalidMessage }
         if let volume { guard volume.isFinite && (0...1).contains(volume) else { throw BridgeError.invalidMessage } }
         if let tabID { guard tabID >= 0 else { throw BridgeError.invalidMessage } }
         if type == "set" {
             guard session?.isEmpty == false, requestID?.isEmpty == false,
                   tabID != nil, volume != nil, muted != nil else { throw BridgeError.invalidMessage }
+        }
+        if type == "playback" {
+            guard session?.isEmpty == false, requestID?.isEmpty == false,
+                  tabID != nil, action != nil, volume == nil, muted == nil else { throw BridgeError.invalidMessage }
         }
         if type == "state" {
             guard session?.isEmpty == false, let tabs, tabs.count <= 500,
@@ -47,6 +58,7 @@ public struct BridgeMessage: Codable {
             for tab in tabs {
                 guard tab.id >= 0, tab.title.count <= 512, tab.domain.count <= 256,
                       (tab.issue?.count ?? 0) <= 512,
+                      (tab.playbackIssue?.count ?? 0) <= 512,
                       tab.controlMode == nil || tab.controlMode == "page",
                       tab.volume.isFinite, (0...1).contains(tab.volume) else { throw BridgeError.invalidMessage }
             }

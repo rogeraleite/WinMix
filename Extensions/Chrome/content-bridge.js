@@ -4,8 +4,15 @@
   const channel = "macvolume-page-v1", bridgeID = crypto.randomUUID();
   let port, retry, disposed = false, initialized = false, lastState;
   const waiting = new Map();
-  function post(type, volume, requestID) {
-    window.postMessage({ channel, direction: "bridge", bridgeID, type, volume, requestID }, location.origin);
+  function post(type, volume, requestID, action, allowFallback) {
+    window.postMessage({ channel, direction: "bridge", bridgeID, type, volume, requestID, action, allowFallback }, location.origin);
+  }
+  function validPlayback(state) {
+    if (state.audibleCount === undefined) return ["canPlay", "canPause", "resumeCount", "playbackIssue"].every(key => state[key] === undefined);
+    return Number.isInteger(state.audibleCount) && state.audibleCount >= 0 && state.audibleCount <= state.playingCount &&
+      typeof state.canPlay === "boolean" && typeof state.canPause === "boolean" &&
+      Number.isInteger(state.resumeCount) && state.resumeCount >= 0 && state.resumeCount <= state.mediaCount &&
+      (state.playbackIssue === undefined || (typeof state.playbackIssue === "string" && state.playbackIssue.length <= 512));
   }
   function pageMessage(event) {
     const message = event.data, state = message?.state;
@@ -13,11 +20,13 @@
         message.direction !== "page" || message.bridgeID !== bridgeID || !state ||
         !Number.isFinite(state.volume) || state.volume < 0 || state.volume > 1 ||
         !Number.isInteger(state.mediaCount) || state.mediaCount < 0 || state.mediaCount > 10000 ||
-        !Number.isInteger(state.playingCount) || state.playingCount < 0 || state.playingCount > state.mediaCount) return;
-    const same = lastState && ["volume", "mediaCount", "playingCount"].every(key => lastState[key] === state[key]);
+        !Number.isInteger(state.playingCount) || state.playingCount < 0 || state.playingCount > state.mediaCount || !validPlayback(state) ||
+        (message.error !== undefined && (typeof message.error !== "string" || message.error.length > 512))) return;
+    const same = lastState && ["volume", "mediaCount", "playingCount", "audibleCount", "canPlay", "canPause", "resumeCount", "playbackIssue"]
+      .every(key => lastState[key] === state[key]);
     lastState = state;
     if (same && !message.requestID) return;
-    try { port?.postMessage({ type: "state", state, requestID: message.requestID }); } catch { /* Reconnect handles a dead worker. */ }
+    try { port?.postMessage({ type: "state", state, requestID: message.requestID, error: message.error }); } catch { /* Reconnect handles a dead worker. */ }
     const item = waiting.get(message.requestID);
     if (item) { clearTimeout(item); waiting.delete(message.requestID); }
   }
@@ -28,13 +37,14 @@
       port = chrome.runtime.connect({ name: "macvolume-media" });
       port.onMessage.addListener(message => {
         if (message.type === "outOfScope") { if (initialized) post("reset"); dispose(); return; }
-        if (!["init", "set", "reset", "state"].includes(message.type)) return;
+        if (!["init", "set", "reset", "state", "playback"].includes(message.type)) return;
+        if (message.type === "playback" && (!["play", "pause"].includes(message.action) || typeof message.allowFallback !== "boolean")) return;
         if (message.type === "init") initialized = true;
         if (message.requestID) waiting.set(message.requestID, setTimeout(() => {
           waiting.delete(message.requestID);
-          try { port?.postMessage({ type: "error", requestID: message.requestID, error: "YouTube player did not confirm the volume. Reload this page once." }); } catch { /* Worker disconnected. */ }
+          try { port?.postMessage({ type: "error", requestID: message.requestID, error: "YouTube player did not confirm the control. Reload this page once." }); } catch { /* Worker disconnected. */ }
         }, 2500));
-        post(message.type, message.volume, message.requestID);
+        post(message.type, message.volume, message.requestID, message.action, message.allowFallback);
       });
       port.onDisconnect.addListener(() => {
         void chrome.runtime.lastError;
