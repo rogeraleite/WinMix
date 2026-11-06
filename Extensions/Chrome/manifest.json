@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "MacVolume Tabs",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "minimum_chrome_version": "116",
-  "description": "Automatic YouTube and YouTube Music tab volume controls for MacVolume. No per-tab activation.",
+  "description": "Independent volume, mute and play/pause for YouTube and YouTube Music tabs in MacVolume. No per-tab activation.",
   "permissions": ["scripting", "nativeMessaging", "storage", "alarms"],
   "host_permissions": ["https://youtube.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://music.youtube.com/*"],
   "content_scripts": [

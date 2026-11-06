@@ -126,6 +126,22 @@ try {
       assert.equal(result.type, "state", result.error);
     }
   }
+  async function playback(tab, action, expectedError = false) {
+    if (nativeMode) {
+      await native.request({ action: "tab", tabID: tab.id, playback: action });
+      await until(() => latest.pending === 0 && (expectedError ? Boolean(latest.chromeError)
+        : latest.tabs.find(t => t.id === tab.id)?.playing === (action === "play")), "confirmed native playback");
+      if (!expectedError) assert.equal(latest.chromeError, "");
+    } else {
+      const requestID = crypto.randomUUID();
+      client.write(frame({ version: 1, type: "playback", session: latest.session, requestID, tabID: tab.id, action }));
+      const result = await until(() => responses.get(requestID), "confirmed playback command");
+      assert.equal(result.type, expectedError ? "error" : "state", result.error);
+    }
+  }
+  async function paused(page, value, selector = "#player") {
+    assert.equal(await page.evaluate(selector => document.querySelector(selector).paused, selector), value);
+  }
   async function player(page, expected, selector = "#player") {
     const result = await page.evaluate(selector => {
       const media = document.querySelector(selector), api = window[Symbol.for("MacVolume.PageController")];
@@ -137,6 +153,22 @@ try {
   }
   await command(first, 0.3, false); await command(second, 0.7, false);
   await player(one, 0.24); await player(two, 0.42);
+  await until(() => latest.tabs.find(t => t.id === first.id)?.canPause === true, "playback capability");
+  await playback(first, "pause");
+  await paused(one, true); await paused(two, false);
+  assert.equal(latest.tabs.find(t => t.id === first.id).volume, 0.3);
+  assert.equal(latest.tabs.find(t => t.id === second.id).volume, 0.7);
+  assert.ok(latest.tabs.find(t => t.id === first.id).canPlay, "Paused tab retains resume control");
+  if (!nativeMode) await playback(first, "pause"); // Explicit repeated Pause is a safe no-op.
+  await playback(first, "play");
+  await paused(one, false); await paused(two, false);
+  await player(one, 0.24); await player(two, 0.42);
+  await command(first, 0, true);
+  await until(() => latest.tabs.find(t => t.id === first.id)?.playing === true, "muted zero-volume tab still playing");
+  await playback(first, "pause"); await playback(first, "play");
+  assert.equal(latest.tabs.find(t => t.id === first.id).volume, 0);
+  assert.equal(latest.tabs.find(t => t.id === first.id).muted, true);
+  await command(first, 0.3, false);
   await one.evaluate(() => { document.querySelector("#player").volume = 0.5; });
   await player(one, 0.15);
   for (let i = 0; i < 3; i++) await command(first, 0.3, false);
@@ -146,6 +178,36 @@ try {
     document.body.append(media); media.volume = 0.4; return media.play();
   }, tone440);
   await player(one, 0.12, "#dynamic");
+  await one.evaluate(src => {
+    const idle = document.createElement("audio"); idle.id = "preload"; idle.src = src; idle.preload = "auto";
+    document.body.append(idle);
+  }, tone440);
+  await playback(first, "pause");
+  await paused(one, true); await paused(one, true, "#dynamic");
+  await playback(first, "play");
+  await paused(one, false); await paused(one, false, "#dynamic");
+  await paused(one, true, "#preload"); await paused(two, false);
+  await one.evaluate(() => {
+    const iframe = document.createElement("iframe"); iframe.src = "https://music.youtube.com/watch?v=embedded-fixture";
+    document.body.append(iframe);
+  });
+  const embedded = await until(() => one.frames().find(frame => frame.url().includes("embedded-fixture")), "authorized embedded player");
+  await until(() => embedded.evaluate(() => window[Symbol.for("MacVolume.PageController")]?.controller.gain === 0.3), "embedded frame inherits gain");
+  await playback(first, "pause");
+  await paused(one, true); await paused(embedded, true); await paused(two, false);
+  await embedded.evaluate(() => {
+    const controller = window[Symbol.for("MacVolume.PageController")].controller;
+    window.savedPlay = controller.play;
+    controller.play = () => Promise.reject(new DOMException("Embedded player blocked", "NotAllowedError"));
+  });
+  await playback(first, "play", true);
+  await paused(one, false); await paused(embedded, true); await paused(two, false);
+  assert.equal(latest.tabs.find(t => t.id === first.id).playing, true, "Partial failure reports actual main-player state");
+  assert.match(latest.tabs.find(t => t.id === first.id).playbackIssue, /blocked/i);
+  await embedded.evaluate(() => { window[Symbol.for("MacVolume.PageController")].controller.play = window.savedPlay; });
+  await playback(first, "pause"); await playback(first, "play");
+  await paused(one, false); await paused(embedded, false); await paused(two, false);
+  await one.evaluate(() => document.querySelector("iframe").remove());
   await one.evaluate(() => { const media = document.querySelector("#dynamic"); media.pause(); media.remove(); });
   await command(first, 0.3, true);
   await until(() => latest.tabs.find(t => t.id === first.id)?.muted, "muted tab stays in panel");
@@ -153,17 +215,34 @@ try {
   assert.equal(latest.tabs.find(t => t.id === second.id).muted, false);
   await command(first, 0.3, false);
   await one.evaluate(() => document.querySelector("#player").pause());
-  await until(() => latest.tabs.find(t => t.id === first.id)?.audible === false, "paused row retained", 20000);
-  await one.evaluate(() => document.querySelector("#player").play());
+  await until(() => latest.tabs.find(t => t.id === first.id)?.playing === false, "website pause reflected and row retained");
+  await playback(first, "play");
+  await playback(first, "pause");
+  // Inject a deterministic rejection at the controller's native-play seam. This
+  // checks propagation through every transport without relying on autoplay prefs.
+  await one.evaluate(() => {
+    const controller = window[Symbol.for("MacVolume.PageController")].controller;
+    window.savedPlay = controller.play;
+    controller.play = () => Promise.reject(new DOMException("Blocked fixture", "NotAllowedError"));
+  });
+  await playback(first, "play", true);
+  await paused(one, true); await paused(two, false);
+  await player(one, 0.15);
+  assert.match(latest.tabs.find(t => t.id === first.id).playbackIssue, /blocked/i);
+  await one.evaluate(() => { window[Symbol.for("MacVolume.PageController")].controller.play = window.savedPlay; });
+  await playback(first, "play");
   if (!nativeMode) {
     const requestID = crypto.randomUUID();
     client.write(frame({ version: 1, type: "set", session: "expired", requestID, tabID: first.id, volume: 1, muted: false }));
     assert.equal((await until(() => responses.get(requestID), "stale session rejection")).type, "error");
+    await playback(first, "pause");
     const old = client; old.destroy();
     await worker.evaluate(() => new Promise(resolve => setTimeout(resolve, 250)));
     await worker.evaluate(() => chrome.alarms.create("reconnect", { when: Date.now() + 50 }));
     await until(() => client !== old, "bridge reconnect without popup");
     await player(one, 0.15); await player(two, 0.42);
+    await paused(one, true); await paused(two, false);
+    await playback(first, "play");
   } else {
     await until(() => latest.browserFound, "native browser ownership");
     await native.request({ action: "master", gain: 0.5 });
@@ -196,6 +275,7 @@ try {
   await unsupported.goto("https://music.youtube.com/watch?v=unsupported");
   const unavailable = await until(() => latest.tabs.find(t => t.title === "Unsupported player fixture"), "unsupported player is honestly reported");
   assert.equal(unavailable.controlled, false); assert.equal(unavailable.canMute, true); assert.ok(unavailable.issue);
+  assert.equal(unavailable.canPlay, false); assert.equal(unavailable.canPause, false);
   if (nativeMode) {
     await native.request({ action: "tab", tabID: unavailable.id, muted: true });
   } else {
@@ -205,9 +285,27 @@ try {
   }
   await until(() => latest.tabs.find(t => t.id === unavailable.id)?.muted, "mute-only native capability");
   await unsupported.close();
+  // A 0.3 document can retain its old controller after an extension reload.
+  // Exercise that legacy state shape: volume remains available, playback does not.
+  await one.evaluate(() => {
+    const controller = window[Symbol.for("MacVolume.PageController")].controller;
+    window.savedState = controller.state;
+    controller.state = function () {
+      const { volume, mediaCount, playingCount } = window.savedState.call(this);
+      return { volume, mediaCount, playingCount };
+    };
+  });
+  await until(() => latest.tabs.find(t => t.id === first.id)?.canPause === false &&
+    latest.tabs.find(t => t.id === first.id)?.playbackIssue?.includes("Reload this page"), "legacy controller requests one page reload");
+  await command(first, 0.3, false); await player(one, nativeMode ? 0.3 : 0.15);
+  await one.evaluate(() => { window[Symbol.for("MacVolume.PageController")].controller.state = window.savedState; });
+  await until(() => latest.tabs.find(t => t.id === first.id)?.canPause === true, "modern playback capabilities restored");
+  await playback(first, "pause");
   await one.goto("https://www.youtube.com/watch?v=fixture-next");
   await until(() => latest.tabs.find(t => t.id === first.id)?.controlled && latest.tabs.find(t => t.id === first.id)?.volume === 0.3, "navigation keeps gain automatically");
   await player(one, 0.24);
+  await until(() => latest.tabs.find(t => t.id === first.id)?.playing === true, "navigation does not replay stale pause");
+  assert.equal(await one.evaluate(() => window[Symbol.for("MacVolume.PageController")].controller.state().resumeCount), 0);
   // An extension reload must bootstrap already-open pages automatically, without a page/action click.
   const oldWorker = worker;
   await worker.evaluate(() => chrome.runtime.reload()).catch(() => {});
@@ -231,11 +329,19 @@ try {
   await until(() => latest.tabs.find(t => t.id === first.id)?.controlled && latest.tabs.find(t => t.id === first.id)?.volume === 1,
     "already-open page bootstraps after extension reload", 20000);
   await command(first, 0.45, false); await player(one, 0.36);
+  await playback(first, "pause"); await playback(first, "play");
   await two.close(); await until(() => !latest.tabs.find(t => t.id === second.id), "closed tab removed");
+  const shutdownPage = await context.newPage();
+  await shutdownPage.goto("https://m.youtube.com/watch?v=shutdown-fixture");
+  const shutdownTab = await until(() => latest.tabs.find(t => t.domain === "m.youtube.com" && t.canPause), "shutdown fixture discovered");
+  await command(shutdownTab, 0.2, false); await playback(shutdownTab, "pause");
   if (nativeMode) await native.close(); else client.write(frame({ version: 1, type: "shutdown" }));
   await until(async () => (await one.evaluate(() => window[Symbol.for("MacVolume.PageController")].controller.gain)) === 1, "normal shutdown restores site volume");
   await player(one, 0.8);
-  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): automatic scoped controls, independent gains, site volume, dynamic players, mute, pause, navigation and shutdown. No per-tab activation.`);
+  await paused(one, false); // Shutdown restores gain without stopping playback.
+  await until(async () => (await shutdownPage.evaluate(() => window[Symbol.for("MacVolume.PageController")].controller.gain)) === 1, "paused tab gain restored at shutdown");
+  await player(shutdownPage, 0.8); await paused(shutdownPage, true);
+  console.log(`PASS (${nativeMode ? "native mixer" : "mock app"}): independent gains and play/pause, muted/zero-volume playback, resume targeting, rejected Play, website state, navigation, reload and shutdown. No per-tab activation.`);
 } finally {
   await context?.close(); await native?.close(); client?.destroy();
   if (listening) server.close();

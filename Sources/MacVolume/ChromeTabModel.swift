@@ -46,9 +46,13 @@ final class ChromeTabModel: ObservableObject {
         session = newSession
         tabs = newTabs.sorted { $0.id < $1.id }
         connected = true
-        status = message.mode == "automatic-youtube"
-            ? "Chrome connected · YouTube and YouTube Music are automatic."
-            : "Chrome connected · Reload MacVolume Tabs once to enable automatic YouTube controls."
+        if message.mode != "automatic-youtube" {
+            status = "Chrome connected · Reload MacVolume Tabs once to enable automatic YouTube controls."
+        } else if newTabs.contains(where: { $0.canPlay == nil || $0.canPause == nil }) {
+            status = "Chrome connected · YouTube controls are automatic. Reload MacVolume Tabs once for play/pause."
+        } else {
+            status = "Chrome connected · YouTube and YouTube Music are automatic."
+        }
         if let request = message.requestID { pending = pending.filter { $0.value != request } }
         let alive = Set(newTabs.filter { $0.controlled || $0.canMute == true || $0.canPlay == true || $0.canPause == true }.map(\.id))
         pending = pending.filter { alive.contains($0.key) }

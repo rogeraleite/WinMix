@@ -36,7 +36,7 @@ Expose `notePlaying(element)`, `setPlayback(action, allowFallback = false)`,
 and state fields `playingCount`, `audibleCount`, `canPlay`, `canPause`,
 `resumeCount`, and `playbackIssue`. Retain the existing gain/mediaCount fields.
 
-- [ ] Write failing tests proving independent tab playback with unchanged gains,
+- [x] Write failing tests proving independent tab playback with unchanged gains,
   repeat Pause preserving resume targets, muted playback, most-recently-active
   fallback, stale/ended/source-less exclusions, and rejected Play.
 
@@ -50,16 +50,16 @@ await one.setPlayback("play");
 assert.equal(a.paused, false);
 ```
 
-- [ ] Run `node --test Tests/ChromeExtension/media-controller.test.mjs` and
+- [x] Run `node --test Tests/ChromeExtension/media-controller.test.mjs` and
   confirm failure before implementation.
-- [ ] Implement weak resume targets and a monotonic last-played sequence. Pause
+- [x] Implement weak resume targets and a monotonic last-played sequence. Pause
   all playing eligible targets; Play resumes the remembered set, otherwise the
   most recently active eligible main-document target only. Await Play promises
   with a 1.5-second bound and expose errors together with observed state.
-- [ ] Wire native play/pause and media events in `page-controller.js`; forward
+- [x] Wire native play/pause and media events in `page-controller.js`; forward
   explicit `playback` messages with `action` and `allowFallback`, returning
   request-tagged state even on failure.
-- [ ] Rerun controller tests and commit this self-contained unit.
+- [x] Rerun controller tests and commit this self-contained unit.
 
 ### Task 2: Validated local transport and tab aggregation
 
@@ -71,7 +71,7 @@ assert.equal(a.paused, false);
 tabID,action:"play"|"pause"}` without volume/muted. Tab state adds optional
 `playing`, `canPlay`, `canPause`, and `playbackIssue` (maximum 512 characters).
 
-- [ ] Write and run failing JS/Swift validation tests for Play/Pause, invalid
+- [x] Write and run failing JS/Swift validation tests for Play/Pause, invalid
   actions/mixed commands, bounds, and absent legacy playback capabilities.
 
 ```js
@@ -79,17 +79,17 @@ assert.equal(validCommand({ version: 1, type: "playback", session: "s",
   requestID: "r", tabID: 1, action: "pause" }), true);
 ```
 
-- [ ] Forward/validate frame counts, booleans, bounded playback errors and
+- [x] Forward/validate frame counts, booleans, bounded playback errors and
   explicit commands in the content bridge. Preserve unsolicited state updates.
-- [ ] Aggregate actual playing independently of audible; keep paused rows. For
+- [x] Aggregate actual playing independently of audible; keep paused rows. For
   Play, prefer frames with resume targets; use the main frame fallback only if
   none exist. For Pause, target playing frames. Repeated commands are safe no-ops.
-- [ ] Await all selected frames before publishing acknowledgement. On partial
+- [x] Await all selected frames before publishing acknowledgement. On partial
   failure publish observed state first, then a request-tagged error. Never apply
   volume/mute writes or rollback playback after failure.
-- [ ] Extend Swift/JS protocol validation and optional metadata while preserving
+- [x] Extend Swift/JS protocol validation and optional metadata while preserving
   old volume-only state. Run Node tests and `swift test --filter TransportTests`.
-- [ ] Commit the transport deliverable.
+- [x] Commit the transport deliverable.
 
 ### Task 3: Native controls and diagnostic coverage
 
@@ -99,16 +99,16 @@ Probe}.swift`, `Tests/MacVolumeTests/ChromeTabModelTests.swift`.
 **Interfaces:** `setPlayback(_ action: String, for tab: ChromeTab)` sends a
 capability-checked explicit command through the existing pending request path.
 
-- [ ] Add a failing socket-backed model test: Pause transmits no volume/mute,
+- [x] Add a failing socket-backed model test: Pause transmits no volume/mute,
   does not optimistically change state, and only matching acknowledgements clear
   pending. Legacy/missing capability and disconnected controls send nothing.
-- [ ] Share request preparation/timeout handling across volume and playback.
+- [x] Share request preparation/timeout handling across volume and playback.
   Render a play/pause button with a tab-specific accessibility label, capability
   checks, pending state, help text and confirmed playing state. Display playback
   issues without disabling usable volume/mute.
-- [ ] Extend the native diagnostic `tab` action with `playback: "play"|"pause"`.
+- [x] Extend the native diagnostic `tab` action with `playback: "play"|"pause"`.
   Add playing, paused and unavailable playback fields to preview fixtures.
-- [ ] Run `swift test`, build a separate validation app, render preview PNGs and
+- [x] Run `swift test`, build a separate validation app, render preview PNGs and
   visually inspect the connected/disconnected tab rows. Commit native controls.
 
 ### Task 4: Integration, packaging, and delivery
@@ -117,26 +117,46 @@ capability-checked explicit command through the existing pending request path.
 `Resources/Info.plist`, `README.md`, `docs/chrome-{tab-volume,tab-validation,
 manual-validation}.md`.
 
-- [ ] Extend isolated integration with explicit playback via mock and native
+- [x] Extend isolated integration with explicit playback via mock and native
   paths; assert selected player paused/resumed, other player unchanged, gains
   unchanged, direct website pause reflected, mute/zero-volume still playing,
   multiple active media resume but idle preload does not start, blocked Play
   returns an error, and navigation clears stale resume references.
-- [ ] Run `node --test Tests/ChromeExtension/*.test.mjs`, `swift test`,
+- [x] Run `node --test Tests/ChromeExtension/*.test.mjs`, `swift test`,
   `python3 -m unittest discover -s Tests -p 'test_*.py'`, syntax/diff checks.
-- [ ] Bump app/extension to 0.4.0 (bundle build 5), update guides and record
+- [x] Bump app/extension to 0.4.0 (bundle build 5), update guides and record
   evidence separately from real-service validation. Build/sign validation app
   using `./scripts/build-app.sh build/validation/MacVolume.app`.
-- [ ] Locate existing Playwright and Chrome for Testing; run isolated browser
+- [x] Locate existing Playwright and Chrome for Testing; run isolated browser
   integration, then native integration with an explicit diagnostic output UID.
-- [ ] Stage and replace `build/MacVolume.app` only after checks pass, quitting
+- [x] Stage and replace `build/MacVolume.app` only after checks pass, quitting
   the running app normally before replacement, and relaunch. Preserve extension
   folder/ID and native-host registration. Tell the user about any required
   one-time extension reload; do not claim live-site checks that were not run.
-- [ ] Record final checks and commit implementation/documentation.
+- [x] Record final checks and commit implementation/documentation.
 
 ## Plan self-review
 
 Spec covered: targeting/lifecycle in Task 1; routing/partial failure/compatibility
 in Task 2; confirmed UI/capability behavior in Task 3; integration and delivery in
 Task 4. Commands, state field names, and target eligibility agree across tasks.
+
+
+## Closure — 2026-11-06
+
+- Delivered app/extension 0.4.0 with explicit per-tab playback commands and
+  confirmed volume/mute/playback state on the four approved origins.
+- Swift: 15 tests; Node: 14 tests; Python: 2 tests passing. Both isolated mock-app
+  and real-native Chrome integrations passed, including authorized frames,
+  partial Play failure, legacy state, paused reconnection, and shutdown without
+  altering playback. Native master measured 0.500 and player attenuation 0.300.
+- Connected/disconnected preview PNGs inspected; build, signature, plist, syntax
+  and diff checks passed. Prior 0.3 evidence archived without modification.
+- Installed and relaunched `build/MacVolume.app` by staged replacement after a
+  normal quit, retaining a backup at
+  `build/MacVolume.backup-0.3.0-6bca3598.app`. Verified bundle 0.4.0, packaged
+  extension byte equality and unchanged native-host registration/extension ID.
+- Remaining user activation: reload MacVolume Tabs in `chrome://extensions` once;
+  reload older pages when their row requests it. This is not a per-tab activation
+  workflow. Real YouTube/Music service checks are still distinguished from
+  successful controlled-fixture tests in the validation guide.

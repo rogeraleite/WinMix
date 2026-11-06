@@ -2,16 +2,19 @@
 
 Per-app volume control for macOS 14.4+, built on Core Audio process taps.
 
-## Automatic YouTube tab volume
+## Independent YouTube tab controls
 
-Version 0.3.0 automatically discovers and controls YouTube and YouTube Music players. No
+Version 0.4.0 automatically discovers YouTube and YouTube Music players and gives each tab
+its own volume, mute and play/pause controls in MacVolume. Paused tabs stay available to resume. No
 per-tab activation or popup interaction is required. Access is limited to the approved HTTPS
-YouTube origins; other sites are excluded. The extension controls HTML audio/video volume,
-keeps the site's own volume separate, and uses Chrome's tab mute. It does not capture audio.
+YouTube origins; other sites are excluded. The extension controls HTML audio/video players,
+keeps the site's own volume separate, and uses Chrome's tab mute. Playback controls do not
+change volume or mute. It does not capture audio.
 
 For an existing installation, reload **MacVolume Tabs** once at `chrome://extensions` and
-approve the YouTube/Music access if requested. Already-open pages are bootstrapped
-automatically. Chrome's app slider remains the master for every Chrome tab.
+approve the YouTube/Music access if requested. Pages running the older 0.3 controller need a
+one-time page reload for play/pause; the row tells you when this is necessary. New supported
+pages work automatically. Chrome's app slider remains the master for every Chrome tab.
 
 For initial setup, load `Extensions/Chrome` as an unpacked extension, copy its ID and run:
 

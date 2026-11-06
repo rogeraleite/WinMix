@@ -1,9 +1,10 @@
-# Controle automático: YouTube e YouTube Music
+# Volume e play/pause por aba: YouTube e YouTube Music
 
-MacVolume e extensão 0.3.0, 2026-11-05. Requer macOS 14.4+ e Chrome 116+.
+MacVolume e extensão 0.4.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
 
 Quando uma aba do YouTube ou YouTube Music reproduz áudio, ela aparece automaticamente
-na seção **CHROME TABS** do MacVolume com título, domínio, volume e mute. Não há botão de
+na seção **CHROME TABS** do MacVolume com título, domínio, volume, mute e play/pause. Abas
+pausadas permanecem disponíveis para retomar. Não há botão de
 ativação por aba. Outras páginas ficam fora do controle automático.
 
 ## Atualizar a instalação existente
@@ -14,6 +15,11 @@ permanecerem nos mesmos caminhos.
 1. Em `chrome://extensions`, clique em **Recarregar** no cartão **MacVolume Tabs**.
 2. Se o Chrome pedir, autorize acesso somente ao YouTube e ao YouTube Music.
 3. Abra ou continue reproduzindo áudio nesses sites e use os controles no MacVolume.
+
+Abas que já executavam o controlador 0.3 precisam de uma recarga da página para receber
+play/pause. O painel informa **Reload this page once** nesses casos; o volume continua
+disponível. Isso é uma migração única do código da página, não uma ativação de cada aba.
+Novas páginas compatíveis recebem os controles automaticamente.
 
 Essa é uma atualização única da extensão, não uma habilitação de cada aba. A extensão tenta
 conectar automaticamente os players das páginas que já estavam abertas. Se o Chrome impedir
@@ -64,7 +70,7 @@ As permissões técnicas são `scripting`, `nativeMessaging`, `storage` e `alarm
 sites também permite obter título/URL somente dessas páginas. A extensão não solicita
 `tabs`, `<all_urls>`, `activeTab`, `tabCapture`, `offscreen` ou `debugger`.
 
-O controlador altera somente o volume dos elementos de áudio/vídeo nas páginas autorizadas.
+O controlador ajusta volume e reprodução dos elementos de áudio/vídeo nas páginas autorizadas.
 Não captura ou grava áudio, não coleta texto de páginas e não transmite conteúdo para serviços
 externos. A ponte local troca apenas comandos e estado. Modo anônimo e outros sites estão
 fora do escopo. Frames novos autorizados recebem o controlador; o bootstrap de páginas já
@@ -85,6 +91,18 @@ abertas prioriza o player do documento principal, sem depender de frames de anú
   oferecer um slider aparentemente funcional.
 - O controle geral do Chrome no mixer é o mestre de todas as abas, inclusive páginas que
   não fazem parte da lista automática. Boost continua sendo uma opção desse mestre.
+- O botão Pause interrompe os players compatíveis que estão tocando na aba selecionada,
+  inclusive em frames autorizados. Play retoma somente os players pausados pelo MacVolume;
+  sem esse conjunto, tenta o player mais recentemente ativo no documento principal.
+  Players novos, anúncios pré-carregados e elementos sem histórico de reprodução não são
+  iniciados arbitrariamente. Abas diferentes mantêm reprodução e ganhos independentes.
+- Play/pause preserva volume e mute. Um player silenciado ou com ganho zero ainda pode
+  estar tocando; o botão exibe Pause nesse estado. Mudanças feitas no site também aparecem.
+- Se o navegador bloquear Play, o painel mostra a falha e orienta iniciar a reprodução no
+  próprio site uma vez. Falhas parciais entre frames mostram o estado real e o erro, sem
+  afirmar que todos os players concluíram o comando. Reconectar não repete comandos antigos.
+- Ao encerrar o app, a restauração de volume/mute não reinicia players pausados nem
+  interrompe players que continuam tocando.
 - Se somente a ponte desconectar, os ganhos das páginas permanecem enquanto a extensão
   estiver ativa. O app desabilita comandos até a reconexão.
 - Encerrar normalmente o MacVolume restaura o volume original dos players e desfaz o mute

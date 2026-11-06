@@ -15,6 +15,7 @@ final class ChromeTabModelTests: XCTestCase {
         try BridgeFrame.write(Data(state.utf8), to: fd)
         try await until { model.connected && model.tabs.count == 1 }
         var tab = try XCTUnwrap(model.tabs.first)
+        XCTAssertFalse(model.status.contains("Reload"))
         model.setPlayback("play", for: tab)
         model.setPlayback("toggle", for: tab)
         XCTAssertTrue(model.pending.isEmpty)
@@ -63,6 +64,7 @@ final class ChromeTabModelTests: XCTestCase {
         try BridgeFrame.write(Data(state.utf8), to: fd)
         try await until { model.connected && model.tabs.count == 1 }
         let tab = try XCTUnwrap(model.tabs.first)
+        XCTAssertTrue(model.status.contains("Reload MacVolume Tabs"))
         model.setVolume(0.3, for: tab)
         XCTAssertTrue(model.pending.isEmpty)
         model.toggleMute(tab)

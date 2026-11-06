@@ -98,6 +98,7 @@ async function state(requestID) {
     const playing = controllers.some(frame => frame.state.playingCount > 0);
     const audible = controllers.some(frame => (frame.state.audibleCount ?? frame.state.playingCount) > 0);
     const playback = controllers.filter(frame => typeof frame.state.canPlay === "boolean");
+    const legacyActive = controllers.some(frame => typeof frame.state.canPlay !== "boolean" && frame.state.playingCount > 0);
     const resumeTargets = playback.some(frame => frame.state.resumeCount > 0);
     const canPlay = resumeTargets || playback.some(frame => frame.frameID === 0 && frame.state.canPlay);
     const playbackIssue = playback.find(frame => frame.state.playbackIssue)?.state.playbackIssue;
@@ -108,8 +109,8 @@ async function state(requestID) {
     tabs.push(tabMetadata(tab, {
       controlled: hasPlayer && confirmed, canMute: true, controlMode: "page", volume: value.volume,
       muted: Boolean(tab.mutedInfo?.muted), audible: !tab.mutedInfo?.muted && (audible || Boolean(tab.audible)),
-      playing, canPlay, canPause: playback.some(frame => frame.state.canPause),
-      ...(playbackIssue ? { playbackIssue } : playback.length === 0 && hasPlayer
+      playing, canPlay, canPause: !legacyActive && playback.some(frame => frame.state.canPause),
+      ...(playbackIssue ? { playbackIssue } : (playback.length === 0 && hasPlayer) || legacyActive
         ? { playbackIssue: "Reload this page once to enable play/pause with the updated extension." } : {}),
       ...(!hasPlayer ? { issue: bootstrapErrors.get(tab.id) || (controllers.length > 0
         ? "No supported audio/video player found; tab mute is available."
@@ -144,6 +145,9 @@ async function apply(message) {
   if (message.type === "playback") {
     const capable = controllers.filter(frame => typeof frame.state?.canPlay === "boolean");
     if (!capable.length) throw new Error("Playback unavailable. Reload this YouTube page once after updating the extension.");
+    if (message.action === "pause" && controllers.some(frame => frame.state?.playingCount > 0 && typeof frame.state.canPause !== "boolean")) {
+      throw new Error("Reload this page once to update all its players before using play/pause.");
+    }
     let targets;
     if (message.action === "pause") targets = capable.filter(frame => frame.state.canPause);
     else {
