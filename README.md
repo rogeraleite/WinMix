@@ -4,12 +4,12 @@ Per-app volume control for macOS 14.4+, built on Core Audio process taps.
 
 ## Independent Chrome tab controls
 
-Version 0.5.0 automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
+MacVolume automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
 compatible players individual volume, mute and play/pause controls. Paused tabs remain
 available. The slider stays responsive during dragging and confirms the last requested gain.
 Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-**Update an existing installation:** reopen MacVolume 0.5.0, reload **MacVolume Tabs** at
+**Update an existing installation:** reopen MacVolume 0.6.0, reload **MacVolume Tabs** at
 `chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
 and HTTP/HTTPS host access so it can discover audio tabs and control their players.
 It does not capture audio or send page content to external services. Existing pages may
@@ -76,9 +76,19 @@ open -n build/MacVolume.app --args --probe --login-item --log /tmp/login.log
 
 ## Look
 
-The window is a retro hardware skin: gunmetal panels, a scrolling dot-matrix display and segmented
-LED sliders (`Skin.swift`). The display holds still while the app is in the background. The logo is
-drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
+Version 0.6.0 defaults to **Ceramic**: porcelain surfaces, cobalt volume sliders, circular mute
+buttons and Chrome tabs grouped beneath their master. The small palette menu in the header
+switches between Ceramic and the original **Retro** skin and remembers your choice. Switching
+appearance keeps the same live audio controls and volume settings.
+
+The **?** button opens an in-app Chrome extension installation guide, with shortcuts to the
+bundled extension folder, Chrome's extensions page, and a safely quoted connection command for
+your extension ID and current app path. The same guide is available in Settings and Chrome Setup.
+
+Retro keeps its gunmetal panels, scrolling dot-matrix display and segmented LED sliders
+(`Skin.swift`). The display holds still while the app is in the background. The Ceramic speaker-cone
+logo is drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
+Use `--style retro` to export the original icon instead.
 The same script exports the Chrome extension icons at 16, 32, 48 and 128 pixels. Use
 `python3 scripts/make-icon.py --chrome-only` to regenerate only those PNGs, then reload the
 unpacked extension in Chrome to refresh its toolbar and extension-manager icons.

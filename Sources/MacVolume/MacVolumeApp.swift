@@ -32,11 +32,11 @@ struct MacVolumeApp: App {
             }
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 480, height: 340)
+        .defaultSize(width: 510, height: 420)
         .windowResizability(.contentMinSize)
 
         Settings {
-            SettingsView(loginItem: loginItem)
+            SettingsView(loginItem: loginItem, chrome: chrome)
         }
     }
 }

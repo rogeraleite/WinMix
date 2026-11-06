@@ -223,20 +223,28 @@ enum Probe {
         let previews = states.map { ($0.0, $0.1, Optional<ChromeTabModel>.none) }
             + [("chrome", states[0].1, chrome),
                ("chrome-disconnected", states[0].1, ChromeTabModel(previewTabs: tabs, connected: false))]
-        for (name, model, chrome) in previews {
-            let size = NSSize(width: 480, height: chrome == nil ? 340 : 620)
-            let view = NSHostingView(rootView: MixerView(model: model, chrome: chrome).frame(width: size.width, height: size.height))
+        func render<Content: View>(_ content: Content, size: NSSize, name: String) -> Bool {
+            let view = NSHostingView(rootView: content.frame(width: size.width, height: size.height))
             view.frame = NSRect(origin: .zero, size: size)
             let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.contentView = view
             view.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-            guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return 1 }
+            guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return false }
             view.cacheDisplay(in: view.bounds, to: bitmap)
             let file = "\(path)-\(name).png"
-            FileManager.default.createFile(atPath: file, contents: bitmap.representation(using: .png, properties: [:]))
+            guard FileManager.default.createFile(atPath: file, contents: bitmap.representation(using: .png, properties: [:])) else { return false }
             log("wrote \(file)")
+            return true
         }
+        for appearance in MixerAppearance.allCases {
+            for (name, model, chrome) in previews {
+                let size = NSSize(width: appearance == .ceramic ? 510 : 480, height: chrome == nil ? 360 : 660)
+                guard render(MixerView(model: model, chrome: chrome, appearanceOverride: appearance),
+                             size: size, name: "\(appearance.rawValue)-\(name)") else { return 1 }
+            }
+        }
+        guard render(BrowserSetupView(chrome: chrome), size: NSSize(width: 560, height: 650), name: "browser-setup") else { return 1 }
         return 0
     }
 

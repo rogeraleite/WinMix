@@ -1,6 +1,10 @@
 # Volume individual por aba do Chrome
 
-App e extensão 0.5.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
+App 0.6.0 e extensão 0.5.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
+
+O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
+`chrome://extensions`, a pasta da extensão e um comando de conexão preenchido com o
+ID informado e o caminho atual do MacVolume. O mesmo guia está em Settings e Setup.
 
 Abas com áudio/vídeo em sites HTTP/HTTPS aparecem automaticamente em **CHROME TABS**,
 com título, domínio e controles independentes. Players compatíveis recebem volume entre
@@ -9,7 +13,7 @@ continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho ind
 
 ## Atualizar a instalação existente
 
-1. Abra o MacVolume 0.5.0. O app novo deve estar aberto antes da extensão nova.
+1. Abra o MacVolume 0.6.0. O app novo deve estar aberto antes da extensão nova.
 2. Em `chrome://extensions`, recarregue **MacVolume Tabs**, na pasta originalmente instalada.
 3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
 4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,

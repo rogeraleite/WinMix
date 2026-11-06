@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Draws the MacVolume logo for macOS and Chrome. Needs Pillow and macOS iconutil.
 
-A rising wedge of LED cells, the universal sign for "volume", in a riveted metal case.
+The Ceramic speaker cone is the default; --style retro preserves the original LED case.
 """
 import argparse
 import pathlib
 import subprocess
 import tempfile
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 SCALE = 2
 SIZE = 1024 * SCALE
@@ -79,12 +79,43 @@ def draw_logo():
     return canvas.resize((1024, 1024), Image.LANCZOS)
 
 
+def draw_ceramic_logo():
+    canvas = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    body = (s(100), s(100), s(924), s(924))
+    mask = rounded_mask(body, s(185))
+    shadow = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    shadow.paste((23, 33, 58, 65), (0, s(18)), mask)
+    canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(s(22))))
+    canvas.paste(vertical_gradient(SIZE, (255, 255, 255), (218, 226, 238)), (0, 0), mask)
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(body, s(185), outline=(245, 248, 255), width=s(3))
+
+    def disk(box, center, rim):
+        left, top, right, bottom = [s(v) for v in box]
+        size = (right - left, bottom - top)
+        radial = Image.radial_gradient("L").resize(size, Image.Resampling.BICUBIC)
+        surface = ImageOps.colorize(radial, center, rim).convert("RGBA")
+        circle = Image.new("L", size, 0)
+        ImageDraw.Draw(circle).ellipse((0, 0, size[0] - 1, size[1] - 1), fill=255)
+        canvas.paste(surface, (left, top), circle)
+
+    # Thick porcelain surround, recessed cobalt cone and convex central dust cap.
+    disk((194, 194, 830, 830), (132, 145, 170), (243, 247, 253))
+    disk((230, 230, 794, 794), (5, 21, 105), (43, 87, 243))
+    draw = ImageDraw.Draw(canvas)
+    draw.ellipse((s(230), s(230), s(794), s(794)), outline=(32, 61, 181), width=s(5))
+    draw.arc((s(244), s(244), s(780), s(780)), 30, 150, fill=(83, 128, 255), width=s(4))
+    disk((418, 418, 606, 606), (53, 99, 235), (9, 27, 115))
+    return canvas.resize((1024, 1024), Image.Resampling.LANCZOS)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chrome-only", action="store_true", help="Export Chrome PNGs without changing the macOS icon")
+    parser.add_argument("--style", choices=("ceramic", "retro"), default="ceramic", help="Icon appearance (default: ceramic)")
     args = parser.parse_args()
     root = pathlib.Path(__file__).resolve().parent.parent
-    logo = draw_logo()
+    logo = draw_ceramic_logo() if args.style == "ceramic" else draw_logo()
     chrome_icons = root / "Extensions/Chrome/icons"
     chrome_icons.mkdir(parents=True, exist_ok=True)
     for size in (16, 32, 48, 128):

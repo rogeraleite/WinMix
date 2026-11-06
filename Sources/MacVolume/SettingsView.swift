@@ -3,6 +3,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var loginItem: LoginItemModel
+    var chrome: ChromeTabModel? = nil
+    @State private var showingSetup = false
 
     var body: some View {
         Form {
@@ -24,12 +26,11 @@ struct SettingsView: View {
             Button("Show Chrome Extension Folder") {
                 if let url = ChromeTabModel.extensionURL { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path) }
             }
-            Button("Open Installation Instructions") {
-                if let url = ChromeTabModel.guideURL { NSWorkspace.shared.open(url) }
-            }
+            Button("Open Installation Instructions") { showingSetup = true }
         }
         .padding(20)
         .frame(width: 340)
         .onAppear(perform: loginItem.refresh)
+        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome) }
     }
 }

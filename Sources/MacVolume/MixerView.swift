@@ -3,6 +3,34 @@ import SwiftUI
 struct MixerView: View {
     @ObservedObject var model: MixerModel
     var chrome: ChromeTabModel? = nil
+    /// Rendering previews must not change the user's saved appearance.
+    var appearanceOverride: MixerAppearance? = nil
+    @AppStorage("mixerAppearance") private var savedAppearance = MixerAppearance.ceramic
+    @State private var showingSetup = false
+
+    private var appearance: MixerAppearance { appearanceOverride ?? savedAppearance }
+    private var selection: Binding<MixerAppearance> {
+        Binding(get: { appearance }, set: { if appearanceOverride == nil { savedAppearance = $0 } })
+    }
+
+    var body: some View {
+        Group {
+            switch appearance {
+            case .ceramic:
+                CeramicMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
+            case .retro:
+                RetroMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
+            }
+        }
+        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome) }
+    }
+}
+
+private struct RetroMixerView: View {
+    @ObservedObject var model: MixerModel
+    var chrome: ChromeTabModel?
+    @Binding var appearance: MixerAppearance
+    let showSetup: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,10 +52,11 @@ struct MixerView: View {
             LogoMark()
             DotText(text: "MacVolume", color: Skin.amber, dot: 1.5, gap: 0.5)
             Grooves()
+            MixerHeaderControls(appearance: $appearance, showSetup: showSetup)
         }
         .padding(.leading, 76)
         .padding(.trailing, 10)
-        .frame(height: 30)
+        .frame(height: 36)
         .background(Skin.chromeLight)
         .bevel()
     }
