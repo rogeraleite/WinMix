@@ -6,7 +6,7 @@ import ChromeSupport
 final class ChromeTabModel: ObservableObject {
     @Published private(set) var tabs: [ChromeTab] = []
     @Published private(set) var connected = false
-    @Published private(set) var status = "Connect MacVolume Tabs and allow site access for individual tab volume."
+    @Published private(set) var status = "Connect WinMix Tabs and allow site access for individual tab volume."
     @Published private(set) var pending: [Int: String] = [:]
     /// Latest slider intent; tabs always retain the last confirmed browser state.
     @Published private(set) var requestedVolumes: [Int: Double] = [:]
@@ -53,7 +53,7 @@ final class ChromeTabModel: ObservableObject {
         tabs = newTabs.sorted { $0.id < $1.id }
         connected = true
         if message.mode != "automatic-sites" {
-            status = "Extension update required · Reload MacVolume Tabs in chrome://extensions and allow access to sites."
+            status = "Extension update required · Reload WinMix Tabs in chrome://extensions and allow access to sites."
         } else if newTabs.contains(where: { $0.canPlay == nil || $0.canPause == nil }) {
             status = "Chrome connected · Tab controls are automatic. Reload older pages once for play/pause."
         } else {

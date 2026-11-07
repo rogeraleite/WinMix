@@ -49,7 +49,7 @@ struct CeramicMixerView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("MacVolume").font(.system(size: 17, weight: .semibold))
+            Text("WinMix").font(.system(size: 17, weight: .semibold))
             Spacer(minLength: 8)
             MixerHeaderControls(appearance: $appearance, showSetup: showSetup)
         }

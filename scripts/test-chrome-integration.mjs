@@ -12,7 +12,7 @@ import { NativeProbe } from "./chrome-native-probe.mjs";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const appPath = path.resolve(process.env.MACVOLUME_TEST_APP || path.join(root, "build/MacVolume.app"));
+const appPath = path.resolve(process.env.MACVOLUME_TEST_APP || path.join(root, "build/WinMix.app"));
 const extensionPath = path.join(appPath, "Contents/Resources/ChromeExtension");
 const nativeMode = process.argv.includes("--native");
 if (nativeMode && !process.env.MACVOLUME_TEST_OUTPUT) throw new Error("Set MACVOLUME_TEST_OUTPUT to an explicit output UID.");
@@ -62,7 +62,7 @@ function fixture(url) {
   if (url.includes("unsupported")) return `<!doctype html><title>Unsupported player fixture</title><script>
     window.context=new AudioContext(); const source=context.createOscillator(),gain=context.createGain();
     gain.gain.value=0.001; source.connect(gain).connect(context.destination); source.start(); context.resume();</script>`;
-  return `<!doctype html><title>MacVolume automatic fixture ${music ? "music" : "video"}</title>
+  return `<!doctype html><title>WinMix automatic fixture ${music ? "music" : "video"}</title>
     <video id="player" loop src="${music ? tone660 : tone440}"></video>
     ${music ? wiz ? `<ytmusic-miniplayer><ytmusic-wiz-player-controls>
       <button aria-label="Previous song">Previous</button><button aria-label="Next song">Next</button>

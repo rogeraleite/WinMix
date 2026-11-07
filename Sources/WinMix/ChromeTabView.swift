@@ -126,7 +126,7 @@ private struct ChromeTabRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if tab.domain == "music.youtube.com" && tab.canNext == nil {
-                Text("Reload MacVolume Tabs and this page to enable track controls.")
+                Text("Reload WinMix Tabs and this page to enable track controls.")
                     .font(.system(size: 9))
                     .foregroundStyle(isCeramic ? Ceramic.secondary : Skin.amber)
             }

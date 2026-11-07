@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draws the MacVolume logo for macOS and Chrome. Needs Pillow and macOS iconutil.
+"""Draws the WinMix logo for macOS and Chrome. Needs Pillow and macOS iconutil.
 
 The original LED case is the default; --style ceramic exports the speaker-cone variant.
 """

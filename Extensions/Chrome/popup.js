@@ -14,11 +14,11 @@ async function refresh() {
     element("title").textContent = tab?.title || "Select a tab";
     const result = await send("status");
     const control = result.state.tabs.find(t => t.id === tab?.id);
-    element("connection").textContent = result.connected ? "Connected to MacVolume" : result.error;
+    element("connection").textContent = result.connected ? "Connected to WinMix" : result.error;
     element("automatic").textContent = !supportedURL(tab?.url)
       ? "Chrome restricts volume scripts on this page; tab mute may still be available."
       : control?.issue || (control ? `Automatic · ${Math.round(control.volume * 100)}%${control.muted ? " · Muted" : ""}`
-        : "Automatic mode is ready. Play audio and the tab will appear in MacVolume.");
+        : "Automatic mode is ready. Play audio and the tab will appear in WinMix.");
   } catch (error) { element("error").textContent = error.message; }
 }
 

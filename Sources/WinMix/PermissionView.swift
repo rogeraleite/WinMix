@@ -9,15 +9,15 @@ struct PermissionView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.tint)
 
-            Text("Allow MacVolume to control app audio")
+            Text("Allow WinMix to control app audio")
                 .font(.title2.weight(.semibold))
 
-            Text("To change an app's volume, MacVolume reads that app's audio and plays it back at the level you choose. macOS calls this System Audio Recording. Nothing is recorded or saved.")
+            Text("To change an app's volume, WinMix reads that app's audio and plays it back at the level you choose. macOS calls this System Audio Recording. Nothing is recorded or saved.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Access is currently off. In System Settings, open **Privacy & Security → Screen & System Audio Recording** and turn on MacVolume under **System Audio Recording Only**.")
+            Text("Access is currently off. In System Settings, open **Privacy & Security → Screen & System Audio Recording** and turn on WinMix under **System Audio Recording Only**.")
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 

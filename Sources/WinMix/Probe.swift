@@ -6,7 +6,7 @@ import ChromeSupport
 
 /// Headless test mode: taps one process for a few seconds and logs what the engine sees.
 ///
-///     MacVolume --probe --pid <pid> [--gain 0.3] [--seconds 5] [--output <device uid>] [--log <file>]
+///     WinMix --probe --pid <pid> [--gain 0.3] [--seconds 5] [--output <device uid>] [--log <file>]
 ///
 /// The README lists the other modes. None of them touch saved volumes or the default output.
 enum Probe {
@@ -74,7 +74,7 @@ enum Probe {
         }
 
         guard let pid = value("--pid").flatMap(pid_t.init) else {
-            log("usage: MacVolume --probe --pid <pid> [--gain 0.3] [--seconds 5] [--log <file>]")
+            log("usage: WinMix --probe --pid <pid> [--gain 0.3] [--seconds 5] [--log <file>]")
             return 2
         }
         let gain = value("--gain").flatMap(Float.init) ?? 0.3

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove only MacVolume's current-user Native Messaging registration."""
+"""Remove only WinMix's current-user Native Messaging registration."""
 import argparse
 import json
 from pathlib import Path
@@ -15,7 +15,7 @@ def uninstall(directory=DEFAULT_DIRECTORY):
     if not path.exists():
         return False
     if json.loads(path.read_text()).get("name") != HOST:
-        raise ValueError("Registration does not belong to MacVolume.")
+        raise ValueError("Registration does not belong to WinMix.")
     path.unlink()
     return True
 
@@ -28,7 +28,7 @@ def main():
         removed = uninstall(args.host_directory)
     except (ValueError, OSError) as error:
         parser.exit(1, f"{error}\n")
-    print("MacVolume bridge registration removed." if removed else "MacVolume bridge was not registered.")
+    print("WinMix bridge registration removed." if removed else "WinMix bridge was not registered.")
 
 
 if __name__ == "__main__":

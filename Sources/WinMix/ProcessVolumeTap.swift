@@ -182,7 +182,7 @@ final class ProcessVolumeTap {
         }
         let tap = CATapDescription(stereoMixdownOfProcesses: processIDs)
         tap.uuid = UUID()
-        tap.name = "MacVolume tap (\(name))"
+        tap.name = "WinMix tap (\(name))"
         tap.isPrivate = true
         tap.muteBehavior = .mutedWhenTapped
         // Anything thrown below tears down what was built so far, in the route's deinit.
@@ -190,7 +190,7 @@ final class ProcessVolumeTap {
         try check(AudioHardwareCreateProcessTap(tap, &route.tapID), "Creating process tap")
 
         let aggregate: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "MacVolume (\(name))",
+            kAudioAggregateDeviceNameKey: "WinMix (\(name))",
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceMainSubDeviceKey: outputUID,
             kAudioAggregateDeviceIsPrivateKey: true,

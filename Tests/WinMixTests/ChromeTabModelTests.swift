@@ -1,7 +1,7 @@
 import XCTest
 import Darwin
 import ChromeSupport
-@testable import MacVolume
+@testable import WinMix
 
 final class ChromeTabModelTests: XCTestCase {
     @MainActor

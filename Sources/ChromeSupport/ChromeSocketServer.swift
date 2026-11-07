@@ -13,7 +13,7 @@ public final class ChromeSocketServer {
 
     private final class Connection {
         let fd: Int32
-        let writer = DispatchQueue(label: "MacVolume.Chrome.write")
+        let writer = DispatchQueue(label: "WinMix.Chrome.write")
         init(_ fd: Int32) {
             self.fd = fd
             LocalSocket.configure(fd)
@@ -41,7 +41,7 @@ public final class ChromeSocketServer {
                 if canAccept { active = connection }
                 lock.unlock()
                 guard canAccept else {
-                    let message = BridgeMessage(type: "error", error: "Only one Chrome profile can connect to MacVolume.")
+                    let message = BridgeMessage(type: "error", error: "Only one Chrome profile can connect to WinMix.")
                     if let data = try? message.encoded() { try? BridgeFrame.write(data, to: fd) }
                     continue
                 }

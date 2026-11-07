@@ -1,15 +1,20 @@
-# MacVolume
+# WinMix
 
-Per-app volume control for macOS 14.4+, built on Core Audio process taps.
+Per-app and per-tab volume control for macOS 14.4+, built on Core Audio process taps.
+macOS only, despite the name.
+
+The name and retro look are a tribute to Winamp. WinMix is an independent project, not
+affiliated with or endorsed by Winamp. It was previously called MacVolume, and older validation
+records in `docs/` keep that name.
 
 ## Independent Chrome tab controls
 
-MacVolume automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
+WinMix automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
 compatible players individual volume, mute and play/pause controls. Paused tabs remain
 available. The slider stays responsive during dragging and confirms the last requested gain.
 Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-**Update an existing installation:** reopen MacVolume 0.7.1, reload **MacVolume Tabs** at
+**Update an existing installation:** reopen WinMix 0.7.1, reload **WinMix Tabs** at
 `chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
 and HTTP/HTTPS host access so it can discover audio tabs and control their players.
 It does not capture audio or send page content to external services. Existing pages may
@@ -24,8 +29,8 @@ output is not controlled by the HTML player gain.
 For initial setup, load `Extensions/Chrome` as an unpacked extension, copy its ID and run:
 
 ```sh
-python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/MacVolume.app"
-open build/MacVolume.app
+python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/WinMix.app"
+open build/WinMix.app
 ```
 
 See the [setup guide](docs/chrome-tab-volume.md), [validation evidence](docs/chrome-tab-validation.md)
@@ -36,7 +41,7 @@ native bridge and setup scripts.
 
 ```sh
 ./scripts/build-app.sh
-open build/MacVolume.app
+open build/WinMix.app
 ```
 
 On first use macOS asks for **System Audio Recording** access. If the meters stay at zero,
@@ -46,32 +51,32 @@ The app is ad-hoc signed, so each rebuild resets this: the first tap after a reb
 running app and do one throwaway tap run after every rebuild: runs that built a second tap during
 that window, or started while the old build was still running, hung.
 
-**Launch at login** is in MacVolume → Settings (⌘,). macOS remembers the app's path, so turn it on
+**Launch at login** is in WinMix → Settings (⌘,). macOS remembers the app's path, so turn it on
 from wherever the app will stay.
 
 Headless probe modes (results go to the `--log` file):
 
 ```sh
 # Tap one process and log levels, latency and CPU
-open -n -W build/MacVolume.app --args --probe --pid <pid> --gain 0.3 --seconds 5 --log /tmp/probe.log
+open -n -W build/WinMix.app --args --probe --pid <pid> --gain 0.3 --seconds 5 --log /tmp/probe.log
 # Log the mixer's rows as apps start/stop playing; --volume sets command-line process rows only
-open -n build/MacVolume.app --args --probe --watch 10 [--volume 0.3] --log /tmp/watch.log
+open -n build/WinMix.app --args --probe --watch 10 [--volume 0.3] --log /tmp/watch.log
 # List audio processes grouped by app (helpers under their app)
-open -n -W build/MacVolume.app --args --probe --groups --log /tmp/groups.log
+open -n -W build/WinMix.app --args --probe --groups --log /tmp/groups.log
 # Start a tap, then add/remove a playing process on the running tap
-open -n -W build/MacVolume.app --args --probe --pid <pid> --gain 0.3 --update-test --log /tmp/upd.log
+open -n -W build/WinMix.app --args --probe --pid <pid> --gain 0.3 --update-test --log /tmp/upd.log
 # Print the System Audio Recording permission status
-open -n build/MacVolume.app --args --probe --permission --log /tmp/perm.log
+open -n build/WinMix.app --args --probe --permission --log /tmp/perm.log
 # Play a tapped process into a given device instead of the default output
-open -n -W build/MacVolume.app --args --probe --pid <pid> --output <device uid> --log /tmp/probe.log
+open -n -W build/WinMix.app --args --probe --pid <pid> --output <device uid> --log /tmp/probe.log
 # Move a running tap between two devices and back
-open -n build/MacVolume.app --args --probe --pid <pid> --move-test --output <uid> --output2 <uid> --log /tmp/move.log
+open -n build/WinMix.app --args --probe --pid <pid> --move-test --output <uid> --output2 <uid> --log /tmp/move.log
 # Change the first device's sample rate and back under a running tap (restores it afterwards)
-open -n build/MacVolume.app --args --probe --pid <pid> --rate-test --output <uid> --output2 <uid> --log /tmp/rate.log
+open -n build/WinMix.app --args --probe --pid <pid> --rate-test --output <uid> --output2 <uid> --log /tmp/rate.log
 # Whole mixer on private settings: saved volume, device moves, stall, wake (<bundle id> must be playing)
-open -n build/MacVolume.app --args --probe --mixer-test <bundle id> --output <uid> --output2 <uid> [--other-pid <pid>] [--skip-rate] --log /tmp/mixer.log
+open -n build/WinMix.app --args --probe --mixer-test <bundle id> --output <uid> --output2 <uid> [--other-pid <pid>] [--skip-rate] --log /tmp/mixer.log
 # Register the login item, log the result and unregister it
-open -n build/MacVolume.app --args --probe --login-item --log /tmp/login.log
+open -n build/WinMix.app --args --probe --login-item --log /tmp/login.log
 ```
 
 ## Look
@@ -109,7 +114,7 @@ Pending commands and disconnected browser controls explain their status in the t
 To check the look without opening the app or touching audio, render the window to PNGs:
 
 ```sh
-.build/release/MacVolume --probe --render-preview /tmp/mixer
+.build/release/WinMix --probe --render-preview /tmp/mixer
 ```
 
 ## How it works
@@ -144,7 +149,7 @@ Command-line processes aren't saved, since their `pid:` keys mean nothing after 
 | Gain applied | out/in peak ratio 0.300 at 30%, every second of the run |
 | Format | tap 48 kHz stereo Float32 → output 96 kHz; HAL resamples, 512 frames in = 512 out |
 | Added delay (device-reported estimate) | ≈ 7 ms |
-| CPU, MacVolume | 0.2–0.6% |
+| CPU, WinMix | 0.2–0.6% |
 | CPU, coreaudiod | 7% → 8% steady state (one-time spike while creating the tap) |
 | By ear (voice pitch normal, no clicks) | _pending manual check_ |
 
@@ -194,7 +199,7 @@ AirPods throughout. Signal checks read a short window after settling, using a �
 | Wake (simulated notification) | routes rebuilt, longest IO gap 42–45 ms, out/in 0.300 |
 | Saved settings | volume and Boost persist; 100% entries and `pid:` rows aren't stored |
 | Login item | registers ("enabled") and unregisters on this ad-hoc build |
-| CPU with 2 taps | MacVolume 0.39–0.44%; coreaudiod 5.9% → 9.5% in one sample, with Chrome also playing |
+| CPU with 2 taps | WinMix 0.39–0.44%; coreaudiod 5.9% → 9.5% in one sample, with Chrome also playing |
 | Real default-output change, real sleep/wake, AirPods call mode, login at boot, Settings window, mute restored after relaunch | _pending manual check_ |
 | No full-volume blip during a device change | _pending manual check_ (a tap reads audio before the mute, so meters can't show it) |
 
@@ -205,11 +210,15 @@ Findings:
   running but reads silence, about 0.5 s later. A peak over a long window hides this. That's why
   each route has its own tap.
 - With the Background Music driver at 44.1 kHz (its app not running) a tap can read silence. It
-  didn't happen on the speakers or Teams Audio, so this looks like that driver, not MacVolume.
+  didn't happen on the speakers or Teams Audio, so this looks like that driver, not WinMix.
 - A tap keeps its output device running even when the app is silent (seen on the speakers), so an
-  idle saved app should keep AirPods active while MacVolume runs. In a single check, tapping a
+  idle saved app should keep AirPods active while WinMix runs. In a single check, tapping a
   process that wasn't playing added no sleep assertion.
 
 Known limits: a `coreaudiod` restart isn't handled (relaunch the app), and audio always goes to the
 default output, even for an app set to a different device.
 
+## License
+
+Copyright (C) 2026 Roger Leite. WinMix is free software under the GNU General Public License
+version 3. See [LICENSE](LICENSE).

@@ -3,7 +3,7 @@ import { SITE_PATTERNS, supportedURL } from "./scope.js";
 import { TabCommandQueue } from "./command-queue.js";
 
 const frames = new Map(), settings = new Map(), requests = new Map(), bootstrapErrors = new Map();
-let port, acknowledged = false, lastError = "Open MacVolume to connect.", sessionID;
+let port, acknowledged = false, lastError = "Open WinMix to connect.", sessionID;
 let snapshotQueue = Promise.resolve();
 const commands = new TabCommandQueue();
 const loaded = (async () => {
@@ -204,7 +204,7 @@ function connect() {
   const candidate = chrome.runtime.connectNative(HOST);
   port = candidate; acknowledged = false;
   candidate.onMessage.addListener(message => {
-    if (message?.version !== VERSION) { report(new Error("Update MacVolume and its extension together.")); return; }
+    if (message?.version !== VERSION) { report(new Error("Update WinMix and its extension together.")); return; }
     if (message.type === "ready") { acknowledged = true; lastError = ""; return; }
     if (message.type === "error") { lastError = message.error || "Bridge error."; return; }
     const task = message.type === "shutdown"
@@ -219,10 +219,10 @@ function connect() {
     const error = chrome.runtime.lastError;
     if (port !== candidate) return;
     port = undefined; acknowledged = false;
-    lastError = error?.message || "MacVolume disconnected. Existing page volumes are preserved.";
+    lastError = error?.message || "WinMix disconnected. Existing page volumes are preserved.";
   });
   setTimeout(() => {
-    if (port === candidate && !acknowledged) { lastError = "MacVolume did not respond. Open the app and reconnect."; candidate.disconnect(); port = undefined; }
+    if (port === candidate && !acknowledged) { lastError = "WinMix did not respond. Open the app and reconnect."; candidate.disconnect(); port = undefined; }
   }, 5000);
   publish().catch(error => report(error));
 }
@@ -233,7 +233,7 @@ async function bootstrap(tab) {
     // New authorized child frames receive the declared all_frames content scripts.
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", files: ["media-controller.js", "transport-controller.js", "page-controller.js"] });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content-bridge.js"] });
-  } catch { bootstrapErrors.set(tab.id, "Allow MacVolume Tabs access to this site, then reload this page once."); }
+  } catch { bootstrapErrors.set(tab.id, "Allow WinMix Tabs access to this site, then reload this page once."); }
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || message?.target !== "worker") return;

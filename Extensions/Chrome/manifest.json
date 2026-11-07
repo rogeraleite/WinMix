@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "MacVolume Tabs",
+  "name": "WinMix Tabs",
   "version": "0.7.0",
   "minimum_chrome_version": "116",
-  "description": "Per-tab volume and playback in MacVolume, with previous, next and shuffle for supported YouTube players.",
+  "description": "Per-tab volume and playback in WinMix, with previous, next and shuffle for supported YouTube players.",
   "permissions": ["tabs", "scripting", "nativeMessaging", "storage", "alarms"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "content_scripts": [
@@ -25,7 +25,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "MacVolume Tabs",
+    "default_title": "WinMix Tabs",
     "default_popup": "popup.html",
     "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
   },

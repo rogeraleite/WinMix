@@ -1,5 +1,5 @@
 import XCTest
-@testable import MacVolume
+@testable import WinMix
 
 final class AppOwnerTests: XCTestCase {
     func testBrowserLaunchedByEditorStillBelongsToBrowser() {

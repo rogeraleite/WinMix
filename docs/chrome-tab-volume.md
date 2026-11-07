@@ -4,7 +4,7 @@ App 0.7.1 e extensão 0.7.0, 2026-11-07. Requer macOS 14.4+ e Chrome 116+.
 
 O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
 `chrome://extensions`, a pasta da extensão e um comando de conexão preenchido com o
-ID informado e o caminho atual do MacVolume. O mesmo guia está em Settings e Setup.
+ID informado e o caminho atual do WinMix. O mesmo guia está em Settings e Setup.
 
 Abas com áudio/vídeo em sites HTTP/HTTPS aparecem automaticamente em **CHROME TABS**,
 com título, domínio e controles independentes. Players compatíveis recebem volume entre
@@ -13,8 +13,8 @@ continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho ind
 
 ## Atualizar a instalação existente
 
-1. Abra o MacVolume 0.7.1. O app novo deve estar aberto antes da extensão nova.
-2. Em `chrome://extensions`, recarregue **MacVolume Tabs**, na pasta originalmente instalada.
+1. Abra o WinMix 0.7.1. O app novo deve estar aberto antes da extensão nova.
+2. Em `chrome://extensions`, recarregue **WinMix Tabs**, na pasta originalmente instalada.
 3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
 4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,
    confira o acesso ao site e recarregue essa página uma vez.
@@ -55,8 +55,8 @@ No Chrome, abra `chrome://extensions`, ative Modo do desenvolvedor, escolha Carr
 compactação e selecione `Extensions/Chrome`. Copie o ID e execute:
 
 ```sh
-python3 scripts/install-chrome-bridge.py ID_DA_EXTENSAO --app "$PWD/build/MacVolume.app"
-open build/MacVolume.app
+python3 scripts/install-chrome-bridge.py ID_DA_EXTENSAO --app "$PWD/build/WinMix.app"
+open build/WinMix.app
 ```
 
 O instalador registra `com.rogerleite.macvolume.chrome` somente para o ID informado em
@@ -111,13 +111,13 @@ conecta o documento principal; players em frames antigos podem exigir uma recarg
 swift test
 node --test Tests/ChromeExtension/*.test.mjs
 python3 -m unittest discover -s Tests -p 'test_*.py'
-./scripts/build-app.sh build/validation/MacVolume.app
+./scripts/build-app.sh build/validation/WinMix.app
 ```
 
 Integração isolada, com páginas HTTP/HTTPS controladas, extensão e ponte reais:
 
 ```sh
-PLAYWRIGHT_MODULE=/caminho/para/playwright CHROME_BINARY="/caminho/para/Google Chrome for Testing" MACVOLUME_TEST_APP=build/validation/MacVolume.app node scripts/test-chrome-integration.mjs
+PLAYWRIGHT_MODULE=/caminho/para/playwright CHROME_BINARY="/caminho/para/Google Chrome for Testing" MACVOLUME_TEST_APP=build/validation/WinMix.app node scripts/test-chrome-integration.mjs
 ```
 
 Acrescente `MACVOLUME_TEST_OUTPUT=UID` e `--native` para testar modelos nativos e mestre Core

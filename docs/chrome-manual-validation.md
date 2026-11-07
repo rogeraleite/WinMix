@@ -6,8 +6,8 @@ do usuário, com **On all sites** confirmado e conexão no modo novo.
 
 ## Ativação
 
-1. Abrir MacVolume 0.5.0.
-2. Recarregar MacVolume Tabs em `chrome://extensions`.
+1. Abrir WinMix 0.5.0.
+2. Recarregar WinMix Tabs em `chrome://extensions`.
 3. Autorizar o novo acesso aos sites HTTP/HTTPS e aos metadados das abas.
 4. Conferir acesso automático aos sites; recarregar uma vez páginas antigas se necessário.
 

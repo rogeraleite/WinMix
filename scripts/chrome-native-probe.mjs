@@ -6,7 +6,7 @@ import path from "node:path";
 export class NativeProbe {
   constructor(app, socket, output, changed) {
     this.pending = new Map();
-    this.child = spawn(path.join(app, "Contents/MacOS/MacVolume"),
+    this.child = spawn(path.join(app, "Contents/MacOS/WinMix"),
       ["--probe", "--chrome-integration", "--output", output],
       { env: { ...process.env, MACVOLUME_CHROME_SOCKET: socket }, stdio: ["pipe", "pipe", "pipe"] });
     this.child.stdin.on("error", () => {});

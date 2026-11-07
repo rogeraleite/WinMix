@@ -85,7 +85,7 @@ public enum LocalSocket {
         }
         guard result == 0, sameUser(fd) else {
             close(fd)
-            throw BridgeError.system("Open MacVolume, then reconnect the Chrome extension.")
+            throw BridgeError.system("Open WinMix, then reconnect the Chrome extension.")
         }
         return fd
     }
@@ -102,7 +102,7 @@ public enum LocalSocket {
         let lock = open(path + ".lock", O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard lock >= 0 else { throw BridgeError.system("Cannot lock Chrome bridge.") }
         guard flock(lock, LOCK_EX | LOCK_NB) == 0 else {
-            close(lock); throw BridgeError.system("Chrome bridge is already running in another MacVolume instance.")
+            close(lock); throw BridgeError.system("Chrome bridge is already running in another WinMix instance.")
         }
         do {
             var addr = try address(path)

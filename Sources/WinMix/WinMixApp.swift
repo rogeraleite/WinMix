@@ -6,11 +6,11 @@ enum Main {
         if CommandLine.arguments.contains("--probe") {
             exit(Probe.run(arguments: CommandLine.arguments))
         }
-        MacVolumeApp.main()
+        WinMixApp.main()
     }
 }
 
-struct MacVolumeApp: App {
+struct WinMixApp: App {
     // Owned by the app, not the window, so taps keep running when the window is closed.
     @StateObject private var permission = PermissionModel()
     @StateObject private var mixer = MixerModel()
@@ -18,7 +18,7 @@ struct MacVolumeApp: App {
     @StateObject private var chrome = ChromeTabModel()
 
     var body: some Scene {
-        WindowGroup("MacVolume") {
+        WindowGroup("WinMix") {
             Group {
                 // "Not determined" goes straight to the mixer: macOS asks (or grants) on the first tap.
                 if permission.status == .denied {

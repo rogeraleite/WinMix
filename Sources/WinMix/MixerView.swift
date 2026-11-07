@@ -50,7 +50,7 @@ private struct RetroMixerView: View {
         HStack(spacing: 10) {
             Grooves()
             LogoMark()
-            DotText(text: "MacVolume", color: Skin.amber, dot: 1.5, gap: 0.5)
+            DotText(text: "WinMix", color: Skin.amber, dot: 1.5, gap: 0.5)
             Grooves()
             MixerHeaderControls(appearance: $appearance, showSetup: showSetup)
         }

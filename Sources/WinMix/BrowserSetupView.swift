@@ -49,7 +49,7 @@ struct BrowserSetupView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Control browser tabs").font(.system(size: 22, weight: .semibold))
-                    Text("Install MacVolume Tabs for Google Chrome.")
+                    Text("Install WinMix Tabs for Google Chrome.")
                         .font(.system(size: 12)).foregroundStyle(Ceramic.secondary)
                 }
                 Spacer()
@@ -67,8 +67,8 @@ struct BrowserSetupView: View {
                             .disabled(chromeURL == nil)
                         if chromeURL == nil { Text("Install Google Chrome to use this integration.").foregroundStyle(Ceramic.secondary) }
                     }
-                    step(2, "Load MacVolume Tabs") {
-                        Text("Choose Load unpacked, then select the ChromeExtension folder included with MacVolume. Keep the app in its permanent location before connecting it.")
+                    step(2, "Load WinMix Tabs") {
+                        Text("Choose Load unpacked, then select the ChromeExtension folder included with WinMix. Keep the app in its permanent location before connecting it.")
                         HStack {
                             Button("Show Extension Folder") {
                                 if let extensionURL { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionURL.path) }
@@ -84,11 +84,11 @@ struct BrowserSetupView: View {
                         Text("In Chrome's folder picker, press ⇧⌘G and paste the copied folder path.")
                             .foregroundStyle(Ceramic.secondary)
                         if extensionURL == nil {
-                            Text("Open the bundled MacVolume.app to access the extension and installer.").foregroundStyle(Ceramic.secondary)
+                            Text("Open the bundled WinMix.app to access the extension and installer.").foregroundStyle(Ceramic.secondary)
                         }
                     }
-                    step(3, "Connect the extension to MacVolume") {
-                        Text("Copy the 32-letter ID shown on the MacVolume Tabs card in Chrome. Paste it below, copy the command, and run it once in Terminal. Python 3 is required.")
+                    step(3, "Connect the extension to WinMix") {
+                        Text("Copy the 32-letter ID shown on the WinMix Tabs card in Chrome. Paste it below, copy the command, and run it once in Terminal. Python 3 is required.")
                         TextField("Extension ID from chrome://extensions", text: $extensionID)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityLabel("Chrome extension ID")
@@ -96,7 +96,7 @@ struct BrowserSetupView: View {
                         if !extensionID.isEmpty && BrowserSetup.normalizedExtensionID(extensionID) == nil {
                             Text("The ID must contain exactly 32 lowercase letters from a to p.").foregroundStyle(Ceramic.blue)
                         }
-                        Toggle("Update the connection after moving MacVolume", isOn: $replaceRegistration)
+                        Toggle("Update the connection after moving WinMix", isOn: $replaceRegistration)
                             .font(.system(size: 11))
                             .onChange(of: replaceRegistration) { _, _ in copied = false }
                         if let command {
@@ -122,15 +122,15 @@ struct BrowserSetupView: View {
                         }
                     }
                     step(4, "Allow sites and start playing") {
-                        Text("In the extension's Details, allow access to the sites you want to control. Keep MacVolume open, then click Reconnect in MacVolume Tabs. Play audio or video in a tab; its controls appear automatically. Reload pages that were already open if they do not appear.")
+                        Text("In the extension's Details, allow access to the sites you want to control. Keep WinMix open, then click Reconnect in WinMix Tabs. Play audio or video in a tab; its controls appear automatically. Reload pages that were already open if they do not appear.")
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Already installed?").font(.system(size: 13, weight: .semibold))
-                        Text("Reload MacVolume Tabs in chrome://extensions using its original folder and ID, approve site access, then reload older pages if needed. Repeat the connection step only if the app path or extension ID changed.")
+                        Text("Reload WinMix Tabs in chrome://extensions using its original folder and ID, approve site access, then reload older pages if needed. Repeat the connection step only if the app path or extension ID changed.")
                         Text("The Chrome app slider is the master for all tabs. Compatible audio/video players get volume, mute and play/pause. Other audio sources may offer mute only.")
                             .foregroundStyle(Ceramic.secondary)
-                        Text("YouTube Music also offers previous, next and shuffle when its player supports them. After updating MacVolume Tabs, reload the music page once to enable new track controls.")
+                        Text("YouTube Music also offers previous, next and shuffle when its player supports them. After updating WinMix Tabs, reload the music page once to enable new track controls.")
                             .foregroundStyle(Ceramic.secondary)
                     }
                     if let openError { Text(openError).foregroundStyle(Ceramic.blue) }

@@ -18,8 +18,8 @@ def install(extension_id, app, directory=DEFAULT_DIRECTORY, replace=False):
     bridge = app / "Contents/MacOS/ChromeBridge"
     extension = app / "Contents/Resources/ChromeExtension/manifest.json"
     if app.suffix != ".app" or not bridge.is_file() or not os.access(bridge, os.X_OK) or not extension.is_file():
-        raise ValueError("Build MacVolume.app first; the app must include ChromeBridge and ChromeExtension.")
-    manifest = {"name": HOST, "description": "MacVolume Chrome tab controls", "path": str(bridge),
+        raise ValueError("Build WinMix.app first; the app must include ChromeBridge and ChromeExtension.")
+    manifest = {"name": HOST, "description": "WinMix Chrome tab controls", "path": str(bridge),
                 "type": "stdio", "allowed_origins": [f"chrome-extension://{extension_id}/"]}
     directory = Path(directory).expanduser()
     destination = directory / f"{HOST}.json"
@@ -30,9 +30,9 @@ def install(extension_id, app, directory=DEFAULT_DIRECTORY, replace=False):
         if old == manifest:
             return destination
         if not replace:
-            raise ValueError("A different MacVolume bridge is registered. Review it, then use --replace to update it.")
+            raise ValueError("A different WinMix bridge is registered. Review it, then use --replace to update it.")
         if old.get("name") != HOST:
-            raise ValueError("Existing registration does not belong to MacVolume.")
+            raise ValueError("Existing registration does not belong to WinMix.")
     directory.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
@@ -50,16 +50,16 @@ def install(extension_id, app, directory=DEFAULT_DIRECTORY, replace=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("extension_id")
-    parser.add_argument("--app", type=Path, required=True, help="Stable path to MacVolume.app")
+    parser.add_argument("--app", type=Path, required=True, help="Stable path to WinMix.app")
     parser.add_argument("--host-directory", type=Path, default=DEFAULT_DIRECTORY,
                         help="Override for Chrome custom user-data directories or isolated testing")
-    parser.add_argument("--replace", action="store_true", help="Replace a reviewed MacVolume registration")
+    parser.add_argument("--replace", action="store_true", help="Replace a reviewed WinMix registration")
     args = parser.parse_args()
     try:
         path = install(args.extension_id, args.app, args.host_directory, args.replace)
     except (ValueError, OSError) as error:
         parser.exit(1, f"{error}\n")
-    print(f"Registered: {path}\nOpen MacVolume, then click Reconnect in MacVolume Tabs.")
+    print(f"Registered: {path}\nOpen WinMix, then click Reconnect in WinMix Tabs.")
 
 
 if __name__ == "__main__":

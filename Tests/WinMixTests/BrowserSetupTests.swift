@@ -1,9 +1,9 @@
 import XCTest
-@testable import MacVolume
+@testable import WinMix
 
 final class BrowserSetupTests: XCTestCase {
     func testRejectsIDsThatCannotBeChromeExtensionIDs() {
-        let script = URL(fileURLWithPath: "/installer.py"), app = URL(fileURLWithPath: "/MacVolume.app")
+        let script = URL(fileURLWithPath: "/installer.py"), app = URL(fileURLWithPath: "/WinMix.app")
         for id in ["", String(repeating: "a", count: 31), String(repeating: "a", count: 33),
                    String(repeating: "q", count: 32), String(repeating: "A", count: 32),
                    "abcdefghijklmnop; touch /tmp/test", String(repeating: "é", count: 32)] {
@@ -15,7 +15,7 @@ final class BrowserSetupTests: XCTestCase {
     func testCopiedCommandPreservesPathsAsSingleShellArguments() throws {
         // Execute only printf to inspect shell parsing, never the real installer.
         let script = URL(fileURLWithPath: "/Users/Roger's Mac/$(echo unsafe)/install.py")
-        let app = URL(fileURLWithPath: "/Applications/Mac Volume's `echo unsafe`.app")
+        let app = URL(fileURLWithPath: "/Applications/Win Mix's `echo unsafe`.app")
         let id = "abcdefghijklmnopabcdefghijklmnop"
         let command = try XCTUnwrap(BrowserSetup.connectionCommand(extensionID: id, scriptURL: script, appURL: app, replace: true))
         let shell = Process(), pipe = Pipe()
