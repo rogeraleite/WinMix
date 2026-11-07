@@ -9,7 +9,7 @@ compatible players individual volume, mute and play/pause controls. Paused tabs 
 available. The slider stays responsive during dragging and confirms the last requested gain.
 Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-**Update an existing installation:** reopen MacVolume 0.7.0, reload **MacVolume Tabs** at
+**Update an existing installation:** reopen MacVolume 0.7.1, reload **MacVolume Tabs** at
 `chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
 and HTTP/HTTPS host access so it can discover audio tabs and control their players.
 It does not capture audio or send page content to external services. Existing pages may
@@ -100,6 +100,11 @@ YouTube Music, plus previous/next where YouTube's player offers them. These cont
 in both styles when available. They use the site's queue and preserve the tab's volume/mute.
 Previous follows the website's behavior and may restart the current track. Reload the updated
 extension and existing YouTube pages once; other sites keep their existing playback controls.
+
+Version 0.7.1 makes control states explicit: **Shuffle on/off** appears in the tab status,
+and active shuffle has a highlighted button with a checkmark. Hover playback, mute, shuffle,
+track navigation, volume or Boost for the current state and the action a click will perform.
+Pending commands and disconnected browser controls explain their status in the tooltip.
 
 To check the look without opening the app or touching audio, render the window to PNGs:
 

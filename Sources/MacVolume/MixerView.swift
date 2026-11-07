@@ -76,7 +76,7 @@ private struct RetroMixerView: View {
                 }
             }
             .buttonStyle(SkinButtonStyle())
-            .help(model.boostEnabled ? "Sliders go up to 200%" : "Let sliders go up to 200%")
+            .help(MixerControlHelp.boost(model.boostEnabled))
             .accessibilityLabel("Boost")
             .accessibilityValue(model.boostEnabled ? "On" : "Off")
         }
@@ -178,8 +178,9 @@ struct AppRowView: View {
                     .foregroundStyle(setting.isMuted ? Skin.red : .white.opacity(0.85))
             }
             .buttonStyle(SkinButtonStyle())
-            .help(setting.isMuted ? "Unmute" : "Mute")
+            .help(MixerControlHelp.mute(setting.isMuted))
             .accessibilityLabel(setting.isMuted ? "Unmute \(row.identity.name)" : "Mute \(row.identity.name)")
+            .accessibilityValue(setting.isMuted ? "Muted" : "Not muted")
 
             LEDSlider(
                 value: Binding(get: { min(setting.volume, maximumVolume) }, set: setVolume),
@@ -187,6 +188,7 @@ struct AppRowView: View {
                 isMuted: setting.isMuted,
                 label: "\(row.identity.name) volume"
             )
+            .help(MixerControlHelp.volume(setting.volume, maximum: maximumVolume, muted: setting.isMuted))
 
             DotText(text: "\(Int((setting.volume * 100).rounded()))%", color: percentColor)
                 .frame(width: 50, alignment: .trailing)

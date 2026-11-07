@@ -16,6 +16,22 @@ enum Ceramic {
     static let inset = Color(red: 0.92, green: 0.95, blue: 0.99)
 }
 
+enum MixerControlHelp {
+    static func boost(_ enabled: Bool) -> String {
+        enabled
+            ? "Boost: On. App sliders allow up to 200%. Click to turn off and cap boosted apps at 100%."
+            : "Boost: Off. App sliders are limited to 100%. Click to unlock up to 200%."
+    }
+
+    static func mute(_ muted: Bool) -> String {
+        muted ? "Mute: On. Click to unmute." : "Mute: Off. Click to mute."
+    }
+
+    static func volume(_ value: Double, maximum: Double, muted: Bool) -> String {
+        "Volume: \(Int((value * 100).rounded()))%. \(muted ? "Muted. " : "")Range: 0–\(Int(maximum * 100))%. Drag to adjust."
+    }
+}
+
 /// Both themes expose the same quiet, keyboard-accessible header actions.
 struct MixerHeaderControls: View {
     @Binding var appearance: MixerAppearance
@@ -40,7 +56,7 @@ struct MixerHeaderControls: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("Appearance: \(appearance.title)")
+            .help("Appearance: \(appearance.title). Click to choose Ceramic or Retro.")
             .accessibilityLabel("Change appearance")
             .accessibilityValue(appearance.title)
 
@@ -67,10 +83,10 @@ struct CeramicButtonStyle: ButtonStyle {
             .foregroundStyle(active ? Ceramic.blue : Ceramic.secondary)
             .frame(width: 30, height: 30)
             .background {
-                Circle().fill(configuration.isPressed ? Ceramic.edge : Color.white.opacity(0.85))
+                Circle().fill(configuration.isPressed ? Ceramic.edge : active ? Ceramic.blue.opacity(0.12) : Color.white.opacity(0.85))
                     .shadow(color: Ceramic.ink.opacity(configuration.isPressed ? 0 : 0.08), radius: 2, y: 1)
             }
-            .overlay(Circle().strokeBorder(Ceramic.edge.opacity(0.8), lineWidth: 0.5))
+            .overlay(Circle().strokeBorder(active ? Ceramic.blue.opacity(0.65) : Ceramic.edge.opacity(0.8), lineWidth: active ? 1.2 : 0.5))
             .contentShape(Circle())
     }
 }

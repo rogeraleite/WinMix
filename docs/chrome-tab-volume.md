@@ -1,6 +1,6 @@
 # Volume individual por aba do Chrome
 
-App e extensão 0.7.0, 2026-11-06. Requer macOS 14.4+ e Chrome 116+.
+App 0.7.1 e extensão 0.7.0, 2026-11-07. Requer macOS 14.4+ e Chrome 116+.
 
 O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
 `chrome://extensions`, a pasta da extensão e um comando de conexão preenchido com o
@@ -13,7 +13,7 @@ continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho ind
 
 ## Atualizar a instalação existente
 
-1. Abra o MacVolume 0.7.0. O app novo deve estar aberto antes da extensão nova.
+1. Abra o MacVolume 0.7.1. O app novo deve estar aberto antes da extensão nova.
 2. Em `chrome://extensions`, recarregue **MacVolume Tabs**, na pasta originalmente instalada.
 3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
 4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,
@@ -31,6 +31,11 @@ explícito ligado/desligado; repetir o mesmo destino não alterna a fila novamen
 faixa preserva ganho e mute, e um comando sem confirmação informa a falha sem repetir o
 clique. Sites sem suporte mantêm volume, mute e play/pause. Após atualizar a extensão,
 recarregue uma vez as páginas do YouTube/YouTube Music já abertas.
+
+O estado aparece como **Shuffle on/off** na linha da aba; quando ligado, o botão também
+ganha destaque e uma marca de seleção. Passe o mouse nos controles para ver o estado
+atual e a ação do clique. Durante comandos pendentes ou desconexão, a dica informa que
+o valor mostrado é o último confirmado e explica por que o controle está indisponível.
 
 O ID e o registro da ponte permanecem válidos na mesma pasta e caminho do app. Reconnect,
 no popup, tenta novamente a conexão com o app. Não há ativação por aba. A configuração

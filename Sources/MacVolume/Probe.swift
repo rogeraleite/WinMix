@@ -220,8 +220,14 @@ enum Probe {
         let tabState = Data(#"{"version":1,"type":"state","session":"preview","tabs":[{"id":41,"canNext":true,"canPrevious":false,"canShuffle":false,"title":"YouTube — Music for work","domain":"youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.3,"muted":false,"playing":true,"canPlay":true,"canPause":true},{"id":42,"canNext":true,"canPrevious":true,"canShuffle":true,"shuffleEnabled":true,"title":"YouTube Music — SONDER","domain":"music.youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.7,"muted":true,"playing":false,"canPlay":true,"canPause":false},{"id":43,"title":"Web Audio player","domain":"example.net","audible":true,"controlled":false,"canMute":true,"controlMode":"page","issue":"No supported audio/video player found; tab mute is available.","volume":1,"muted":false,"playing":false,"canPlay":false,"canPause":false}]}"#.utf8)
         let tabs = (try? BridgeMessage.decode(tabState).tabs) ?? []
         let chrome = ChromeTabModel(previewTabs: tabs, connected: true)
+        let shuffleOff = tabs.map { tab in
+            var tab = tab
+            if tab.canShuffle == true { tab.shuffleEnabled = false }
+            return tab
+        }
         let previews = states.map { ($0.0, $0.1, Optional<ChromeTabModel>.none) }
             + [("chrome", states[0].1, chrome),
+               ("chrome-shuffle-off", states[0].1, ChromeTabModel(previewTabs: shuffleOff, connected: true)),
                ("chrome-disconnected", states[0].1, ChromeTabModel(previewTabs: tabs, connected: false))]
         func render<Content: View>(_ content: Content, size: NSSize, name: String) -> Bool {
             let view = NSHostingView(rootView: content.frame(width: size.width, height: size.height))

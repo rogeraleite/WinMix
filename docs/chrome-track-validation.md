@@ -25,3 +25,12 @@ The music page required starting a track after reload. Started a track briefly a
 Transport uses site player buttons rather than a universal media API. YouTube Music exposes all three when available; YouTube may expose previous/next only. Other sites retain volume/mute/playback. Shuffle is unavailable when the page cannot report its state, and unavailable controls cannot be invoked. Previous can restart the current track. Old pages may need one reload after an extension update.
 
 The first new JS test run exposed a VM fixture export issue; the fixture now imports the classic controller just like the existing media tests. A separate compatibility test caught an overly broad global reload notice; the notice is now confined to legacy music rows, preserving the existing playback compatibility contract. Existing assertions were retained.
+
+## 0.7.1 — visible state and hover help, 2026-11-07
+
+Added Shuffle on/off to tab status, a selected-button highlight and checkmark for shuffle, selected mute styling, and state-first tooltips for playback, mute, shuffle, navigation, sliders, Boost and appearance. Pending/disconnected controls explain waiting or last-confirmed state. Playback actions and the extension are unchanged.
+
+- Swift: 21 existing tests passed (`build/transport-validation/state-help-tests.log`). Release build and strict signature verification passed.
+- Rendered 13 previews, adding shuffle-off data alongside shuffle-on, normal/boost/empty/disconnected states and help. Inspected Ceramic on/off and Retro on for distinct selection styling and readable state text (`build/state-help-validation/previews/`).
+- Updated `build/MacVolume.app` to 0.7.1, with 0.7.0 preserved at `build/MacVolume.backup-0.7.0-before-state-help.app`. Existing extension remains 0.7.0; no extension reload or permission update was needed.
+- Verified native UI help strings: Playback: Paused / Click to resume; Shuffle: Off / Click to turn on; Mute: Off / Click to mute; slider value/range; and Boost: Off / Click to unlock up to 200%. The live music row shows Paused · Shuffle off and the existing Retro selection was preserved. Verification did not send playback, mute, shuffle or gain commands.

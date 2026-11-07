@@ -70,7 +70,7 @@ struct CeramicMixerView: View {
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .fixedSize()
-                .help(model.boostEnabled ? "App volume up to 200%" : "Allow app volume up to 200%")
+                .help(MixerControlHelp.boost(model.boostEnabled))
         }
         .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 20)
@@ -97,12 +97,14 @@ struct CeramicMixerView: View {
                 Image(systemName: setting.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
             }
             .buttonStyle(CeramicButtonStyle(active: setting.isMuted))
-            .help(setting.isMuted ? "Unmute \(row.identity.name)" : "Mute \(row.identity.name)")
+            .help(MixerControlHelp.mute(setting.isMuted))
             .accessibilityLabel(setting.isMuted ? "Unmute \(row.identity.name)" : "Mute \(row.identity.name)")
+            .accessibilityValue(setting.isMuted ? "Muted" : "Not muted")
 
             CeramicVolumeSlider(
                 value: Binding(get: { min(setting.volume, model.maximumVolume) }, set: { model.setVolume($0, for: row) }),
                 maximum: model.maximumVolume, isMuted: setting.isMuted, label: "\(row.identity.name) volume")
+                .help(MixerControlHelp.volume(setting.volume, maximum: model.maximumVolume, muted: setting.isMuted))
 
             Text("\(Int((setting.volume * 100).rounded()))%")
                 .font(.system(size: 12, weight: .semibold).monospacedDigit())
