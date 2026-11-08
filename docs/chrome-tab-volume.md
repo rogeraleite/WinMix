@@ -3,8 +3,8 @@
 App 0.7.1 e extensão 0.7.0, 2026-11-07. Requer macOS 14.4+ e Chrome 116+.
 
 O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
-`chrome://extensions`, a pasta da extensão e um comando de conexão preenchido com o
-ID informado e o caminho atual do WinMix. O mesmo guia está em Settings e Setup.
+`chrome://extensions` e a pasta da extensão. Cole o ID e clique em **Connect browser**;
+o fluxo principal não exige Terminal nem Python. O mesmo guia está em Settings e Setup.
 
 Abas com áudio/vídeo em sites HTTP/HTTPS aparecem automaticamente em **CHROME TABS**,
 com título, domínio e controles independentes. Players compatíveis recebem volume entre
@@ -51,8 +51,16 @@ uma ponte conectada como prova de que os novos controles estão disponíveis.
 ./scripts/build-app.sh
 ```
 
-No Chrome, abra `chrome://extensions`, ative Modo do desenvolvedor, escolha Carregar sem
-compactação e selecione `Extensions/Chrome`. Copie o ID e execute:
+Abra o app em sua pasta permanente. No guia **?**, abra `chrome://extensions`, ative Modo
+do desenvolvedor, escolha Carregar sem compactação e selecione a pasta **ChromeExtension**
+indicada por **Show Extension Folder** ou **Copy Folder Path**. Cole o ID em **Extension ID**
+e clique em **Connect browser**. Depois clique em **Reconnect** no popup da extensão.
+
+O guia preenche um ID salvo válido e distingue registro salvo de conexão ao vivo. Se o app
+ou o ID mudou, revise os valores e marque **Replace this saved registration** antes de conectar.
+Um registro inválido ou um link simbólico é recusado e preservado.
+
+Para desenvolvimento, o instalador Python continua disponível:
 
 ```sh
 python3 scripts/install-chrome-bridge.py ID_DA_EXTENSAO --app "$PWD/build/WinMix.app"

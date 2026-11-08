@@ -109,7 +109,8 @@ private struct RetroMixerView: View {
                                 setting: model.setting(for: row),
                                 maximumVolume: model.maximumVolume,
                                 setVolume: { model.setVolume($0, for: row) },
-                                toggleMute: { model.toggleMute(row) }
+                                toggleMute: { model.toggleMute(row) },
+                                outputMenu: AppOutputMenu(model: model, row: row, appearance: .retro)
                             )
                         }
                         if let chrome { ChromeTabsView(model: chrome) }
@@ -149,8 +150,10 @@ struct AppRowView: View {
     let maximumVolume: Double
     let setVolume: (Double) -> Void
     let toggleMute: () -> Void
+    let outputMenu: AppOutputMenu
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
         HStack(spacing: 8) {
             Lamp(isOn: row.isPlaying)
 
@@ -192,6 +195,8 @@ struct AppRowView: View {
 
             DotText(text: "\(Int((setting.volume * 100).rounded()))%", color: percentColor)
                 .frame(width: 50, alignment: .trailing)
+        }
+        outputMenu.padding(.leading, 42)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)

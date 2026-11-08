@@ -24,7 +24,11 @@ enum ChromeIntegrationProbe {
             let tabs = (try? JSONSerialization.jsonObject(with: JSONEncoder().encode(chrome.tabs))) ?? []
             return ["connected": chrome.connected, "tabs": tabs, "pending": chrome.pending.count,
                     "chromeError": chrome.error ?? "", "status": chrome.status,
-                    "mixerError": mixer.error ?? "", "output": mixer.outputName,
+                    "mixerError": mixer.error ?? "",
+                    "output": mixer.tapDiagnostics(for: browserKey)?.outputDevice ?? mixer.outputName,
+                    "selectedOutput": mixer.settings[browserKey]?.outputUID ?? "",
+                    "pendingOutput": mixer.pendingOutputs[browserKey] ?? "",
+                    "activeTapCount": mixer.activeTapCount,
                     "browserFound": mixer.rows.contains { $0.key == browserKey },
                     "audioGroups": mixer.rows.filter { $0.processes.contains { $0.bundleID.lowercased().contains("chrome") } }
                         .map { ["key": $0.key, "processBundles": $0.processes.map(\.bundleID)] },
@@ -90,8 +94,13 @@ enum ChromeIntegrationProbe {
                     }
                     return
                 case "route":
-                    guard let uid = command["uid"] as? String, AudioObjectID.device(uid: uid) != nil else { throw SpikeError("Unknown output UID.") }
-                    mixer.route(to: uid)
+                    guard let uid = command["uid"] as? String,
+                          mixer.outputDevices.contains(where: { $0.uid == uid }),
+                          let row = mixer.rows.first(where: { $0.key == browserKey }) else { throw SpikeError("Unknown test output or browser row.") }
+                    mixer.setOutput(uid, for: row)
+                case "reset-route":
+                    guard let row = mixer.rows.first(where: { $0.key == browserKey }) else { throw SpikeError("No test browser row.") }
+                    mixer.setOutput(nil, for: row)
                 case "stall": mixer.simulateStall(for: browserKey)
                 case "sleep": NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: NSWorkspace.shared)
                 case "wake": NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: NSWorkspace.shared)

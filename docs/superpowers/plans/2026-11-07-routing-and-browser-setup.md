@@ -29,11 +29,17 @@ A and B can run concurrently with disjoint write ownership. Do not run overlappi
 
 ## Delivery checklist
 
-- [ ] Implement A: compatibility and injected routing tests; available-device watcher; per-group route resolution and failure recovery; per-app menus in both styles.
-- [ ] Implement B: native manifest installer and filesystem tests; prefilled ID and Connect browser action; honest saved/live connection feedback and replacement handling.
-- [ ] Integrate A and B, run one coordinated Swift test/build sequence, and resolve compilation/test failures at their source.
-- [ ] Run separate fresh routing/setup reviews; cross-fix or explicitly assign findings with ownership handoff, then verify fixes and final interfaces.
-- [ ] Extend/render previews for available, selected and fallback devices in both styles and native setup states.
-- [ ] Run isolated routing/browser validation where available, preserving personal outputs, saved levels and host registration.
+- [x] Implement A: compatibility and injected routing tests; available-device watcher; per-group route resolution and failure recovery; per-app menus in both styles.
+- [x] Implement B: native manifest installer and filesystem tests; prefilled ID and Connect browser action; honest saved/live connection feedback and replacement handling.
+- [x] Integrate A and B, run one coordinated Swift test/build sequence, and resolve compilation/test failures at their source.
+- [x] Run separate fresh routing/setup reviews; cross-fix or explicitly assign findings with ownership handoff, then verify fixes and final interfaces.
+- [x] Extend/render previews for available, selected and fallback devices in both styles and native setup states.
+- [x] Run isolated routing/browser validation where available, preserving personal outputs, saved levels and host registration.
 - [ ] Update version/docs, create and verify the signed bundle, back up/update the local app and verify native UI without changing user-selected audio destinations.
 - [ ] Record final evidence, remaining limits and actual local availability, then commit only task-owned files.
+
+2026-11-08: owner requested all three open items in sequence, including the separately approved
+menu-bar mixer. Routing/setup source, 55 Swift tests and independent review close before the
+menu-bar implementation. Native setup UI checks and final local distribution are consolidated
+into the combined 0.8.0 bundle; no intermediate installation over the user's running app.
+Evidence: `docs/routing-and-setup-validation.md` and `docs/menu-bar-validation.md`.

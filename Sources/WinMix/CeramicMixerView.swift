@@ -80,7 +80,8 @@ struct CeramicMixerView: View {
 
     private func appRow(_ row: AppGroup) -> some View {
         let setting = model.setting(for: row)
-        return HStack(spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 10) {
             Image(nsImage: row.identity.icon).resizable().frame(width: 30, height: 30)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
@@ -110,6 +111,8 @@ struct CeramicMixerView: View {
                 .font(.system(size: 12, weight: .semibold).monospacedDigit())
                 .foregroundStyle(setting.volume > 1 && !setting.isMuted ? Ceramic.blue : Ceramic.ink)
                 .frame(width: 42, alignment: .trailing)
+        }
+        AppOutputMenu(model: model, row: row, appearance: .ceramic).padding(.leading, 40)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)

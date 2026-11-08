@@ -26,7 +26,14 @@ files, and audio paths without a compatible player do not get a working volume s
 where possible the app reports the limitation and offers tab mute. Arbitrary Web Audio
 output is not controlled by the HTML player gain.
 
-For initial setup, load `Extensions/Chrome` as an unpacked extension, copy its ID and run:
+For initial setup, open **? → Chrome Setup** in WinMix, open Chrome's extensions page,
+enable Developer mode and load the bundled **ChromeExtension** folder. Paste the extension's
+32-letter ID into the setup sheet and click **Connect browser**. Then click **Reconnect** in
+WinMix Tabs. No Terminal or Python is needed. The sheet prefills a valid saved registration
+and asks before replacing a different app path or ID. Saved registration and a live Chrome
+connection are reported separately.
+
+The original command-line installer remains available for development:
 
 ```sh
 python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/WinMix.app"
@@ -134,7 +141,15 @@ output goes silent while we read it), wraps it in a private aggregate device who
 is the default output, and in the IO callback copies tap → output multiplied by the gain. Mono
 outputs get both channels mixed.
 
-`MixerModel` follows the default output. To change device, a tap builds a complete new route (its
+Each app row has an output selector in both Ceramic and Retro. Choose **System default** to
+follow the Mac, or pin that app to an available output. The selection is saved by device UID
+and app bundle ID. Chrome tabs share Chrome's app output. Selecting an app output does not
+change the Mac's system output. A selected device that disconnects falls back to the current
+system output, while keeping its saved choice, and returns automatically when it reconnects.
+The selector reports disconnected, connecting and retrying states, with the effective route
+in its tooltip. An explicit output uses a tap even at 100% volume.
+
+To change device, a tap builds a complete new route (its
 own tap and aggregate), waits for its first IO callback and only then destroys the old one, so the
 app is never left unread and playing at full volume. The same move rebuilds every route after wake,
 and a 3-second check rebuilds any route whose IO has stopped or retries one that failed to move.
@@ -215,8 +230,7 @@ Findings:
   idle saved app should keep AirPods active while WinMix runs. In a single check, tapping a
   process that wasn't playing added no sleep assertion.
 
-Known limits: a `coreaudiod` restart isn't handled (relaunch the app), and audio always goes to the
-default output, even for an app set to a different device.
+Known limit: a `coreaudiod` restart isn't handled (relaunch the app).
 
 ## License
 

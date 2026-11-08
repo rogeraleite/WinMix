@@ -212,10 +212,21 @@ enum Probe {
                         "com.microsoft.teams2": VolumeSetting(volume: 0.8, isMuted: true),
                         "com.apple.Music": VolumeSetting(volume: 1),
                         "net.whatsapp.WhatsApp": VolumeSetting(volume: 1.6)]
+        let speakers = AudioOutputDevice(uid: "preview-speakers", name: "MacBook Pro Speakers")
+        let headphones = AudioOutputDevice(uid: "preview-headphones", name: "USB Headphones")
+        let devices = [speakers, headphones]
+        var routedSettings = settings
+        routedSettings["com.google.Chrome"] = VolumeSetting(volume: 0.3, outputUID: headphones.uid, outputName: headphones.name)
+        var fallbackSettings = routedSettings
+        fallbackSettings["com.google.Chrome"] = VolumeSetting(volume: 0.3, outputUID: "preview-disconnected", outputName: "Disconnected headphones")
         let states: [(String, MixerModel)] = [
             ("normal", MixerModel(previewRows: rows, settings: settings.mapValues { var s = $0; s.volume = min(s.volume, 1); return s }, boostEnabled: false, outputName: "Roger’s AirPods Pro #2")),
             ("boost", MixerModel(previewRows: rows, settings: settings, boostEnabled: true, outputName: "MacBook Pro Speakers")),
             ("empty", MixerModel(previewRows: [], settings: [:], boostEnabled: false, outputName: "MacBook Pro Speakers")),
+            ("output-selected", MixerModel(previewRows: rows, settings: routedSettings, boostEnabled: true,
+                                           outputName: speakers.name, outputDevices: devices)),
+            ("output-fallback", MixerModel(previewRows: rows, settings: fallbackSettings, boostEnabled: true,
+                                           outputName: speakers.name, outputDevices: devices)),
         ]
         let tabState = Data(#"{"version":1,"type":"state","session":"preview","tabs":[{"id":41,"canNext":true,"canPrevious":false,"canShuffle":false,"title":"YouTube — Music for work","domain":"youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.3,"muted":false,"playing":true,"canPlay":true,"canPause":true},{"id":42,"canNext":true,"canPrevious":true,"canShuffle":true,"shuffleEnabled":true,"title":"YouTube Music — SONDER","domain":"music.youtube.com","audible":true,"controlled":true,"canMute":true,"controlMode":"page","volume":0.7,"muted":true,"playing":false,"canPlay":true,"canPause":false},{"id":43,"title":"Web Audio player","domain":"example.net","audible":true,"controlled":false,"canMute":true,"controlMode":"page","issue":"No supported audio/video player found; tab mute is available.","volume":1,"muted":false,"playing":false,"canPlay":false,"canPause":false}]}"#.utf8)
         let tabs = (try? BridgeMessage.decode(tabState).tabs) ?? []

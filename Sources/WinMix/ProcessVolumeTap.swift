@@ -7,15 +7,18 @@ import Foundation
 /// aggregate sharing it (seen on macOS 27.2: the survivor keeps running but reads silence).
 private final class OutputRoute {
     let tapDescription: CATapDescription
+    var processIDs: [AudioObjectID]
     var tapID = AudioObjectID.unknown
     var aggregateID = AudioObjectID.unknown
     var ioProcID: AudioDeviceIOProcID?
+    var diagnostics = ProcessVolumeTap.Diagnostics()
     let startedAt = Date()
     /// Written by the IO thread; proves this route is actually reading the tap.
     let callbacks = UnsafeMutablePointer<Int>.allocate(capacity: 1)
 
-    init(tapDescription: CATapDescription) {
+    init(tapDescription: CATapDescription, processIDs: [AudioObjectID]) {
         self.tapDescription = tapDescription
+        self.processIDs = processIDs
         callbacks.initialize(to: 0)
     }
 
@@ -84,18 +87,27 @@ final class ProcessVolumeTap {
     }
 
     let name: String
-    private(set) var processIDs: [AudioObjectID]
+    /// Membership exposed to the model describes the effective route, not an
+    /// unconfirmed candidate that might fail or be canceled.
+    var processIDs: [AudioObjectID] { route?.processIDs ?? desiredProcessIDs }
+    private var desiredProcessIDs: [AudioObjectID]
     private(set) var diagnostics = Diagnostics()
 
     private let shared = UnsafeMutablePointer<SharedState>.allocate(capacity: 1)
-    private var route: OutputRoute?
-    private var retiringRoutes: [OutputRoute] = []
+    private let handoff = AudioRouteHandoff<OutputRoute>(isReady: { $0.callbacks.pointee > 0 })
+    private var route: OutputRoute? { handoff.activeRoute }
+    private var transitionToken: UInt64 = 0
     private var lastCallbackCount = 0
-    private(set) var outputUID: String?
+    var outputUID: String? { handoff.outputUID }
+    var pendingOutputUID: String? { handoff.pendingOutputUID }
+    var routeFailure: String? { handoff.routeFailure }
     private(set) var routeGeneration = 0
+    /// Mixer routes retain native mute if a disconnected device stops delivering IO,
+    /// until fallback starts. Direct diagnostic taps retain their original behavior.
+    var holdsMuteWithoutIO = false
 
     init(processIDs: [AudioObjectID], name: String) {
-        self.processIDs = processIDs
+        desiredProcessIDs = processIDs
         self.name = name
         shared.initialize(to: SharedState())
     }
@@ -123,48 +135,49 @@ final class ProcessVolumeTap {
     func start(outputUID: String? = nil) throws {
         shared.pointee.currentGain = shared.pointee.targetGain
         let uid = try outputUID ?? AudioObjectID.defaultOutputUID()
-        route = try makeRoute(outputUID: uid)
+        let route = try makeRoute(outputUID: uid)
+        transitionToken &+= 1
+        handoff.start(route, outputUID: uid)
+        diagnostics = route.diagnostics
         routeGeneration += 1
-        self.outputUID = uid
-    }
-
-    /// Moves the running tap to another output device, or rebuilds its route on the same one.
-    /// On failure the current route is left in place.
-    func moveOutput(to uid: String) throws {
-        guard route != nil else { return }
-        let newRoute = try makeRoute(outputUID: uid)
-        if let oldRoute = route {
-            retiringRoutes.append(oldRoute)
-            retire(oldRoute, onceRunning: newRoute)
-        }
-        route = newRoute
-        routeGeneration += 1
-        outputUID = uid
         lastCallbackCount = 0
     }
 
-    /// Keeps the old route reading the tap until the new one has really started, so the app
-    /// is never left unread (and so unmuted) in between. Gives up after 5 s: the device may be gone.
-    private func retire(_ oldRoute: OutputRoute, onceRunning newRoute: OutputRoute, attempts: Int = 250) {
-        guard newRoute.callbacks.pointee == 0, attempts > 0 else {
-            retiringRoutes.removeAll { $0 === oldRoute }
-            return
+    /// Moves the running tap to another output device, or rebuilds its route on the same one.
+    /// On failure the current route is left in place. A successful start is only
+    /// provisional: outputUID/diagnostics change after the first replacement IO.
+    func moveOutput(to uid: String) throws {
+        guard route != nil else { return }
+        guard pendingOutputUID != uid else { return }
+        transitionToken &+= 1
+        try handoff.move(to: uid) { try makeRoute(outputUID: uid) }
+        pollHandoff(token: transitionToken)
+    }
+
+    private func advanceHandoff() -> AudioRouteHandoff<OutputRoute>.PollResult {
+        let result = handoff.poll()
+        if result == .activated {
+            diagnostics = route?.diagnostics ?? diagnostics
+            routeGeneration += 1
+            lastCallbackCount = 0
         }
-        // Weak so that stopping the tap really stops its routes: their IO threads use `shared`,
-        // which is freed with the tap.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self, weak oldRoute, weak newRoute] in
-            guard let self, let oldRoute else { return }
-            guard let newRoute else {
-                self.retiringRoutes.removeAll { $0 === oldRoute }
-                return
-            }
-            self.retire(oldRoute, onceRunning: newRoute, attempts: attempts - 1)
+        return result
+    }
+
+    private func pollHandoff(token: UInt64) {
+        guard token == transitionToken, advanceHandoff() == .waiting else { return }
+        // Do not retain routes in delayed blocks: stop() must release all IO
+        // before the shared render state is deallocated with this tap.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            self?.pollHandoff(token: token)
         }
     }
 
     /// True when the IO thread hasn't run since the last check. A new route gets a few seconds
     /// to start, since Bluetooth devices can be slow to open.
     func checkStalled() -> Bool {
+        _ = advanceHandoff()
+        guard pendingOutputUID == nil else { return false }
         guard let route else { return false }
         let count = route.callbacks.pointee
         defer { lastCallbackCount = count }
@@ -180,13 +193,13 @@ final class ProcessVolumeTap {
         guard let outputDevice = AudioObjectID.device(uid: outputUID) else {
             throw SpikeError("Output device \(outputUID) is not available")
         }
-        let tap = CATapDescription(stereoMixdownOfProcesses: processIDs)
+        let tap = CATapDescription(stereoMixdownOfProcesses: desiredProcessIDs)
         tap.uuid = UUID()
         tap.name = "WinMix tap (\(name))"
         tap.isPrivate = true
-        tap.muteBehavior = .mutedWhenTapped
+        tap.muteBehavior = holdsMuteWithoutIO ? .muted : .mutedWhenTapped
         // Anything thrown below tears down what was built so far, in the route's deinit.
-        let route = OutputRoute(tapDescription: tap)
+        let route = OutputRoute(tapDescription: tap, processIDs: desiredProcessIDs)
         try check(AudioHardwareCreateProcessTap(tap, &route.tapID), "Creating process tap")
 
         let aggregate: [String: Any] = [
@@ -205,7 +218,8 @@ final class ProcessVolumeTap {
         try check(AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &route.aggregateID),
                   "Creating aggregate device")
 
-        diagnostics = try readDiagnostics(route, outputDevice: outputDevice)
+        route.diagnostics = try readDiagnostics(route, outputDevice: outputDevice)
+        let diagnostics = route.diagnostics
         // The render code treats samples as Float32; anything else would come out as loud noise.
         guard diagnostics.tapFormat.isFloat32, diagnostics.outputFormat.isFloat32 else {
             throw SpikeError("Unsupported format (tap: \(diagnostics.tapFormat.summary), output: \(diagnostics.outputFormat.summary))")
@@ -227,28 +241,61 @@ final class ProcessVolumeTap {
 
     /// Changes which processes the running tap covers, e.g. when an app spawns a new helper.
     func setProcesses(_ ids: [AudioObjectID]) throws {
-        guard let route else {
-            processIDs = ids
+        desiredProcessIDs = ids
+        guard let route else { return }
+        // Health checks compare requested membership with the confirmed route.
+        // Do not restart a replacement that already covers those processes.
+        if let pending = handoff.pendingRoute, Set(pending.processIDs) == Set(ids) { return }
+        do {
+            try updateProcesses(ids, on: route)
+        } catch {
+            // A vanished helper can make in-place tap updates fail. Build a
+            // replacement containing the desired membership before releasing the
+            // old tap, which must continue muting/playing its surviving members.
+            guard let destination = pendingOutputUID ?? outputUID else { throw error }
+            transitionToken &+= 1
+            // The pending route still contains obsolete membership. Cancel first
+            // so a same-device handoff is a rebuild rather than cancellation.
+            handoff.cancelPending()
+            try handoff.move(to: destination) { try makeRoute(outputUID: destination) }
+            pollHandoff(token: transitionToken)
             return
         }
+        // A pending route must cover newly spawned helpers before it can become
+        // the effective route. If its update fails, keep the updated active one.
+        if let pending = handoff.pendingRoute {
+            do { try updateProcesses(ids, on: pending) }
+            catch {
+                transitionToken &+= 1
+                handoff.failPending("Couldn't update the pending output: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func updateProcesses(_ ids: [AudioObjectID], on route: OutputRoute) throws {
+        let previous = route.tapDescription.processes
         route.tapDescription.processes = ids
         var address = AudioObjectPropertyAddress(mSelector: kAudioTapPropertyDescription,
                                                  mScope: kAudioObjectPropertyScopeGlobal,
                                                  mElement: kAudioObjectPropertyElementMain)
         // Core Audio takes a pointer to the object reference, like CF-typed properties.
         var description = route.tapDescription
-        try withUnsafeMutablePointer(to: &description) { pointer in
-            try check(AudioObjectSetPropertyData(route.tapID, &address, 0, nil,
-                                                 UInt32(MemoryLayout<CATapDescription>.size), pointer),
-                      "Updating tap processes")
+        do {
+            try withUnsafeMutablePointer(to: &description) { pointer in
+                try check(AudioObjectSetPropertyData(route.tapID, &address, 0, nil,
+                                                     UInt32(MemoryLayout<CATapDescription>.size), pointer),
+                          "Updating tap processes")
+            }
+            route.processIDs = ids
+        } catch {
+            route.tapDescription.processes = previous
+            throw error
         }
-        processIDs = ids
     }
 
     func stop() {
-        route = nil
-        retiringRoutes.removeAll()
-        outputUID = nil
+        transitionToken &+= 1
+        handoff.stop()
     }
 
     private func readDiagnostics(_ route: OutputRoute, outputDevice: AudioObjectID) throws -> Diagnostics {

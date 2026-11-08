@@ -318,11 +318,13 @@ try {
   } else {
     await until(() => latest.browserFound, "native browser ownership");
     await native.request({ action: "master", gain: 0.5 });
-    async function meters(stage) {
+    async function meters(stage, expectedGain = 0.5) {
       let result;
       await until(async () => {
+        const status = await native.request({ action: "status" });
+        if (status.activeTapCount === 0 || status.mixerError) return false;
         result = await native.request({ action: "meters" });
-        return result.inputPeak > 0.000001 && Math.abs(result.ratio - 0.5) < 0.02;
+        return result.inputPeak > 0.000001 && Math.abs(result.ratio - expectedGain) < 0.02 && result.pendingOutput === "";
       }, stage, 20000);
       assert.equal(result.mixerError, "");
       console.log(`Native ${stage}: input=${result.inputPeak.toFixed(7)} output=${result.outputPeak.toFixed(7)} ratio=${result.ratio.toFixed(3)} device=${result.output}`);
@@ -340,7 +342,17 @@ try {
     assert.ok(Math.abs(reduced.inputPeak / baseline.inputPeak - 0.3) < 0.06, `HTML player gain measured ${reduced.inputPeak / baseline.inputPeak}`);
     await two.evaluate(() => document.querySelector("#player").play());
     for (const uid of process.env.MACVOLUME_TEST_OUTPUTS ? JSON.parse(process.env.MACVOLUME_TEST_OUTPUTS) : []) {
-      await native.request({ action: "route", uid }); await meters(`route ${uid}`);
+      await native.request({ action: "route", uid });
+      const routed = await meters(`per-app route ${uid}`);
+      assert.equal(routed.selectedOutput, uid);
+      await native.request({ action: "master", gain: 1 });
+      const unity = await meters(`explicit route at 100% ${uid}`, 1);
+      assert.equal(unity.activeTapCount, 1, "Explicit destination must keep its tap at unity gain");
+      const direct = await native.request({ action: "reset-route" });
+      assert.equal(direct.selectedOutput, "");
+      assert.equal(direct.activeTapCount, 0, "Unity/default must release the process tap");
+      await native.request({ action: "master", gain: 0.5 });
+      await meters("reset to private default after explicit routing");
     }
   }
   const unsupported = await context.newPage();

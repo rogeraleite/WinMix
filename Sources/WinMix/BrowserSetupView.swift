@@ -3,9 +3,7 @@ import SwiftUI
 
 enum BrowserSetup {
     static func normalizedExtensionID(_ value: String) -> String? {
-        let id = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard id.count == 32, id.utf8.allSatisfy({ (97...112).contains($0) }) else { return nil }
-        return id
+        BrowserBridgeInstaller.normalizedExtensionID(value)
     }
 
     static func connectionCommand(extensionID: String, scriptURL: URL, appURL: URL, replace: Bool = false) -> String? {
@@ -21,27 +19,33 @@ enum BrowserSetup {
 
 struct BrowserSetupView: View {
     var chrome: ChromeTabModel? = nil
+    /// Explicit paths allow isolated setup validation without changing the user's registration.
+    var appURL = Bundle.main.bundleURL
+    var hostDirectory = BrowserBridgeInstaller.defaultHostDirectory
     @Environment(\.dismiss) private var dismiss
     @State private var extensionID = ""
     @State private var replaceRegistration = false
-    @State private var copied = false
     @State private var copiedFolder = false
     @State private var openError: String?
+    @State private var registration: BrowserBridgeInstaller.Registration?
+    @State private var registrationError: String?
+    @State private var installError: String?
+    @State private var registrationSaved = false
 
     private var chromeURL: URL? { NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") }
     private var extensionURL: URL? {
-        ChromeTabModel.extensionURL.flatMap { FileManager.default.fileExists(atPath: $0.appendingPathComponent("manifest.json").path) ? $0 : nil }
+        let url = appURL.appendingPathComponent("Contents/Resources/ChromeExtension", isDirectory: true)
+        return FileManager.default.fileExists(atPath: url.appendingPathComponent("manifest.json").path) ? url : nil
     }
-    private var scriptURL: URL? {
-        Bundle.main.resourceURL.flatMap { resources in
-            let url = resources.appendingPathComponent("scripts/install-chrome-bridge.py")
-            return FileManager.default.fileExists(atPath: url.path) ? url : nil
-        }
+    private var needsReplacement: Bool {
+        guard let registration else { return false }
+        let app = appURL.standardizedFileURL.resolvingSymlinksInPath()
+        return registration.appURL != app || registration.extensionID != BrowserSetup.normalizedExtensionID(extensionID)
     }
-    private var command: String? {
-        guard let scriptURL, Bundle.main.bundleURL.pathExtension == "app" else { return nil }
-        return BrowserSetup.connectionCommand(extensionID: extensionID, scriptURL: scriptURL,
-                                              appURL: Bundle.main.bundleURL, replace: replaceRegistration)
+    private var canConnect: Bool {
+        BrowserSetup.normalizedExtensionID(extensionID) != nil && extensionURL != nil
+            && appURL.pathExtension == "app" && registrationError == nil
+            && (!needsReplacement || replaceRegistration)
     }
 
     var body: some View {
@@ -88,38 +92,40 @@ struct BrowserSetupView: View {
                         }
                     }
                     step(3, "Connect the extension to WinMix") {
-                        Text("Copy the 32-letter ID shown on the WinMix Tabs card in Chrome. Paste it below, copy the command, and run it once in Terminal. Python 3 is required.")
+                        Text("Copy the 32-letter ID shown on the WinMix Tabs card in Chrome, paste it below, then click Connect browser.")
                         TextField("Extension ID from chrome://extensions", text: $extensionID)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityLabel("Chrome extension ID")
-                            .onChange(of: extensionID) { _, _ in copied = false }
+                            .onChange(of: extensionID) { _, _ in
+                                replaceRegistration = false
+                                registrationSaved = false
+                                installError = nil
+                            }
                         if !extensionID.isEmpty && BrowserSetup.normalizedExtensionID(extensionID) == nil {
                             Text("The ID must contain exactly 32 lowercase letters from a to p.").foregroundStyle(Ceramic.blue)
                         }
-                        Toggle("Update the connection after moving WinMix", isOn: $replaceRegistration)
-                            .font(.system(size: 11))
-                            .onChange(of: replaceRegistration) { _, _ in copied = false }
-                        if let command {
-                            Text(command).font(.system(size: 10, design: .monospaced))
+                        if let registration, needsReplacement {
+                            Text("Saved app: \(registration.appURL.path)\nSaved extension ID: \(registration.extensionID)")
+                                .font(.system(size: 10, design: .monospaced))
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Ceramic.inset, in: RoundedRectangle(cornerRadius: 6))
+                            Toggle("Replace this saved registration", isOn: $replaceRegistration)
+                                .font(.system(size: 11))
+                                .help("Update only this WinMix connection after changing the app location or extension ID.")
                         }
-                        HStack {
-                            Button(copied ? "Copied" : "Copy Connection Command") {
-                                guard let command else { return }
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(command, forType: .string)
-                                copied = true
-                            }
-                            .disabled(command == nil)
-                            Button("Open Terminal") {
-                                if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") {
-                                    NSWorkspace.shared.openApplication(at: url, configuration: .init())
-                                }
-                            }
+                        Button("Connect browser", action: connectBrowser)
+                            .disabled(!canConnect)
+                            .help("Save this extension's connection to WinMix for your macOS user.")
+                        if registrationSaved || (registration != nil && !needsReplacement) {
+                            Label("Browser registration saved", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(Ceramic.blue)
+                            Text("In WinMix Tabs, click Reconnect. The live connection status above confirms when Chrome connects.")
+                                .foregroundStyle(Ceramic.secondary)
                         }
+                        if let registrationError { Text(registrationError).foregroundStyle(Ceramic.blue) }
+                        if let installError { Text(installError).foregroundStyle(Ceramic.blue) }
                     }
                     step(4, "Allow sites and start playing") {
                         Text("In the extension's Details, allow access to the sites you want to control. Keep WinMix open, then click Reconnect in WinMix Tabs. Play audio or video in a tab; its controls appear automatically. Reload pages that were already open if they do not appear.")
@@ -145,6 +151,7 @@ struct BrowserSetupView: View {
         .foregroundStyle(Ceramic.ink)
         .tint(Ceramic.blue)
         .preferredColorScheme(.light)
+        .onAppear(perform: loadRegistration)
     }
 
     private func step<Content: View>(_ number: Int, _ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -164,6 +171,34 @@ struct BrowserSetupView: View {
         guard let chromeURL, let url = URL(string: "chrome://extensions/") else { return }
         NSWorkspace.shared.open([url], withApplicationAt: chromeURL, configuration: .init()) { _, error in
             if let error { DispatchQueue.main.async { openError = error.localizedDescription } }
+        }
+    }
+
+    private func loadRegistration() {
+        do {
+            registration = try BrowserBridgeInstaller.existingRegistration(hostDirectory: hostDirectory)
+            registrationError = nil
+            if extensionID.isEmpty, let registration {
+                extensionID = registration.extensionID
+            }
+        } catch {
+            registration = nil
+            registrationSaved = false
+            registrationError = error.localizedDescription
+        }
+    }
+
+    private func connectBrowser() {
+        do {
+            try BrowserBridgeInstaller.install(extensionID: extensionID, appURL: appURL, hostDirectory: hostDirectory,
+                                               replace: replaceRegistration)
+            registration = try BrowserBridgeInstaller.existingRegistration(hostDirectory: hostDirectory)
+            registrationSaved = true
+            replaceRegistration = false
+            installError = nil
+        } catch {
+            installError = error.localizedDescription
+            loadRegistration()
         }
     }
 }
