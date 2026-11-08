@@ -4,11 +4,14 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var loginItem: LoginItemModel
     var chrome: ChromeTabModel? = nil
+    var setupHostDirectory = BrowserBridgeInstaller.defaultHostDirectory
+    var allowsLoginChanges = true
     @State private var showingSetup = false
 
     var body: some View {
         Form {
             Toggle("Launch at login", isOn: Binding(get: { loginItem.isEnabled }, set: loginItem.setEnabled))
+                .disabled(!allowsLoginChanges)
 
             if loginItem.status == .requiresApproval {
                 Text("macOS needs your approval before WinMix can open at login.")
@@ -31,6 +34,6 @@ struct SettingsView: View {
         .padding(20)
         .frame(width: 340)
         .onAppear(perform: loginItem.refresh)
-        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome) }
+        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome, hostDirectory: setupHostDirectory) }
     }
 }

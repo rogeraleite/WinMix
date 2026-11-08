@@ -31,9 +31,15 @@ enum AudioCaptureAccess {
 
 @MainActor
 final class PermissionModel: ObservableObject {
-    @Published private(set) var status = AudioCaptureAccess.status()
+    @Published private(set) var status: AudioCaptureAccess.Status
+    private let readStatus: () -> AudioCaptureAccess.Status
+
+    init(readStatus: @escaping () -> AudioCaptureAccess.Status = AudioCaptureAccess.status) {
+        self.readStatus = readStatus
+        status = readStatus()
+    }
 
     func refresh() {
-        status = AudioCaptureAccess.status()
+        status = readStatus()
     }
 }

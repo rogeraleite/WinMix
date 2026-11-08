@@ -262,6 +262,25 @@ enum Probe {
             }
         }
         guard render(BrowserSetupView(chrome: chrome), size: NSSize(width: 560, height: 650), name: "browser-setup") else { return 1 }
+        let normalMenu = MixerPreview.model()
+        normalMenu.boostEnabled = false
+        let errorMenu = MixerPreview.model()
+        errorMenu.error = "Could not move the test app to USB audio. Still using MacBook Pro Speakers."
+        let menuStates: [(String, MixerModel, AudioCaptureAccess.Status)] = [
+            ("normal", normalMenu, .authorized), ("boost", MixerPreview.model(), .authorized),
+            ("empty", states[2].1, .authorized), ("denied", normalMenu, .denied),
+            ("disconnected", states[4].1, .authorized), ("error", errorMenu, .authorized),
+            ("many-long", MixerPreview.model(many: true), .authorized)
+        ]
+        for (name, model, permissionStatus) in menuStates {
+            for dark in [false, true] {
+                let panel = MenuBarMixerView(model: model, permissionStatus: permissionStatus,
+                    openMixer: {}, openChromeSetup: {})
+                    .environment(\.colorScheme, dark ? .dark : .light)
+                guard render(panel, size: NSSize(width: 360, height: 520),
+                             name: "menu-\(name)-\(dark ? "dark" : "light")") else { return 1 }
+            }
+        }
         return 0
     }
 
