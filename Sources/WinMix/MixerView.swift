@@ -5,6 +5,8 @@ struct MixerView: View {
     var chrome: ChromeTabModel? = nil
     /// Rendering previews must not change the user's saved appearance.
     var appearanceOverride: MixerAppearance? = nil
+    @ObservedObject var navigation = AppNavigation()
+    var setupHostDirectory = BrowserBridgeInstaller.defaultHostDirectory
     @AppStorage("mixerAppearance") private var savedAppearance = MixerAppearance.ceramic
     @State private var showingSetup = false
 
@@ -22,7 +24,15 @@ struct MixerView: View {
                 RetroMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
             }
         }
-        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome) }
+        .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome, hostDirectory: setupHostDirectory) }
+        .onAppear(perform: consumeSetupRequest)
+        .onChange(of: navigation.browserSetupRequested) { _, requested in
+            if requested { consumeSetupRequest() }
+        }
+    }
+
+    private func consumeSetupRequest() {
+        if navigation.consumeBrowserSetupRequest() { showingSetup = true }
     }
 }
 
