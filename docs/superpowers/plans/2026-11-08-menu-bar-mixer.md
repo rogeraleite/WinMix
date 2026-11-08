@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-08-menu-bar-mixer-design.md` (approved 2026-11-08).
 
-**Authorization:** This document delivers the requested planning only. No implementation step has been performed or marked complete. Execute after the owner asks to implement. The workflow skill names in the standard header are not installed in the current skill catalog; do not assume they are available or make installation a product dependency. At execution time follow the available workflow and the owner's delegation preference. No sub-agents are needed for this planning task.
+**Authorization:** The owner requested implementation of all three open items on 2026-11-08. Implementation source is complete through `cfeb7b8`; the combined local candidate is 0.8.0 (11). Unchecked native/hardware steps below remain unverified; see `docs/menu-bar-validation.md` for precise evidence and tool limitations. The workflow skill names in the standard header are not installed in the current skill catalog; do not assume they are available or make installation a product dependency. At execution time follow the available workflow and the owner's delegation preference. No sub-agents are needed for this planning task.
 
 ## Global Constraints
 
@@ -62,10 +62,10 @@ func outputLabel(for group: AppGroup) -> String
 func outputHelp(for group: AppGroup) -> String
 ```
 
-- [ ] Inspect `git status --short --branch` and the earlier plan. If routing/setup is still unfinished, complete it as its own delivery using that plan before starting Task 2. Record its final commit in the later validation report. Do not label the prerequisite finished merely because source files exist.
-- [ ] Run `swift test --filter MixerRoutingTests` and `swift test --filter BrowserBridgeInstallerTests` sequentially. Resolve baseline failures in the routing/setup change, preserving route recovery and installer safety. The menu-bar feature must not absorb unresolved audio behavior.
-- [ ] Confirm the earlier change's full tests/build and delivery checklist are complete. Save its tracked implementation in its own commit; stage exact task-owned paths, never `git add .` in this mixed worktree.
-- [ ] Record `git rev-parse HEAD` and inspect `git status --short`. Start Task 2 with known ownership of the files being modified. Planning docs can already be committed separately without including the prerequisite's uncommitted implementation.
+- [x] Inspect `git status --short --branch` and the earlier plan. If routing/setup is still unfinished, complete it as its own delivery using that plan before starting Task 2. Record its final commit in the later validation report. Do not label the prerequisite finished merely because source files exist.
+- [x] Run `swift test --filter MixerRoutingTests` and `swift test --filter BrowserBridgeInstallerTests` sequentially. Resolve baseline failures in the routing/setup change, preserving route recovery and installer safety. The menu-bar feature must not absorb unresolved audio behavior.
+- [x] Confirm the earlier change's full tests/build and delivery checklist are complete. Save its tracked implementation in its own commit; stage exact task-owned paths, never `git add .` in this mixed worktree.
+- [x] Record `git rev-parse HEAD` and inspect `git status --short`. Start Task 2 with known ownership of the files being modified. Planning docs can already be committed separately without including the prerequisite's uncommitted implementation.
 
 **Acceptance:** routing/setup behavior is independently reviewable, its tests pass, and the exact interfaces above are present. If those interfaces changed during prerequisite review, reconcile this plan before writing menu-bar source.
 
@@ -81,7 +81,7 @@ func outputHelp(for group: AppGroup) -> String
 - Consumes: the existing `MixerView` sheet state `showingSetup` and `BrowserSetupView(chrome:)`.
 - Produces: `MixerView(..., navigation: AppNavigation)`; default navigation supports existing isolated preview callers. Live scenes always supply the shared app-owned navigation.
 
-- [ ] Write these behavior tests first:
+- [x] Write these behavior tests first:
 
 ```swift
 import XCTest
@@ -111,8 +111,8 @@ final class AppNavigationTests: XCTestCase {
 }
 ```
 
-- [ ] Run `swift test --filter AppNavigationTests`; expect missing-type errors before the new implementation exists.
-- [ ] Implement the navigation object:
+- [x] Run `swift test --filter AppNavigationTests`; expect missing-type errors before the new implementation exists.
+- [x] Implement the navigation object:
 
 ```swift
 import Combine
@@ -132,7 +132,7 @@ final class AppNavigation: ObservableObject {
 }
 ```
 
-- [ ] Extend `MixerView` with the observation and consumption below. Append the observer after the existing `.sheet`. Do not create another setup sheet; the header help button and menu shortcut converge on `showingSetup`.
+- [x] Extend `MixerView` with the observation and consumption below. Append the observer after the existing `.sheet`. Do not create another setup sheet; the header help button and menu shortcut converge on `showingSetup`.
 
 ```swift
 // Property in MixerView; existing preview call sites remain valid.
@@ -152,8 +152,8 @@ private func consumeSetupRequest() {
 
 Requests remain pending while the permission screen replaces `MixerView`; they are consumed once when that view becomes available. Repeated clicks while the sheet is already presented keep a single sheet open. Later main-window reopen must not reopen a consumed request.
 
-- [ ] Run `swift test --filter AppNavigationTests`; expect both tests to pass, with no live audio accessed by these tests. Run `swift build` for the view integration.
-- [ ] Review the diff, then commit only these three implementation/test files with message `Add one-shot navigation to browser setup`.
+- [x] Run `swift test --filter AppNavigationTests`; expect both tests to pass, with no live audio accessed by these tests. Run `swift build` for the view integration.
+- [x] Review the diff, then commit only these three implementation/test files with message `Add one-shot navigation to browser setup`.
 
 ## Task 3: Deliver the compact native app-control panel
 
@@ -166,7 +166,7 @@ Requests remain pending while the permission screen replaces `MixerView`; they a
 - Produces: `MenuBarMixerView(model:permissionStatus:openMixer:openChromeSetup:)`.
 - Produces: `AppOutputMenu(model:row:appearance:)` accepting `MixerAppearance?`, default `nil` for native appearance. Existing explicit `.ceramic` / `.retro` calls keep their behavior.
 
-- [ ] Extend output-menu presentation without copying routing logic. Replace its appearance property and label foreground expression with:
+- [x] Extend output-menu presentation without copying routing logic. Replace its appearance property and label foreground expression with:
 
 ```swift
 var appearance: MixerAppearance? = nil
@@ -183,7 +183,7 @@ private var labelColor: Color {
 
 Keep the same Picker binding, saved-disconnected item, Chrome explanation, help text and accessibility values. Use `var` for this defaulted stored property so the synthesized memberwise initializer preserves the explicit `appearance:` argument used by existing callers.
 
-- [ ] Define the panel inputs and layout. Keep only rows scrollable and leave space for a status message:
+- [x] Define the panel inputs and layout. Keep only rows scrollable and leave space for a status message:
 
 ```swift
 import AppKit
@@ -232,7 +232,7 @@ struct MenuBarMixerView: View {
 
 Use actual measured row height when adjusting the 116-point sizing estimate. If content grows under larger accessibility text, shrink the scroll area first and retain footer visibility. A native render/native UI check, rather than a hardcoded row count assertion, determines whether 520 points is respected.
 
-- [ ] Add the header and footer inside `MenuBarMixerView`. Settings uses the existing scene through `SettingsLink`; no duplicate `SettingsView` in the panel:
+- [x] Add the header and footer inside `MenuBarMixerView`. Settings uses the existing scene through `SettingsLink`; no duplicate `SettingsView` in the panel:
 
 ```swift
 private var header: some View {
@@ -272,7 +272,7 @@ private var footer: some View {
 
 Verify Settings activation from another frontmost app in Task 4. Do not intercept Escape globally: native menu-bar window handling must dismiss only the panel, not close the main mixer.
 
-- [ ] Add the app row using a native `Slider`. Its two-line layout retains room for controls at 360 points:
+- [x] Add the app row using a native `Slider`. Its two-line layout retains room for controls at 360 points:
 
 ```swift
 private func appRow(_ row: AppGroup) -> some View {
@@ -315,8 +315,8 @@ private func appRow(_ row: AppGroup) -> some View {
 
 The text state explicitly identifies mute and the existing output label identifies disconnected/retrying routes. Preserve `outputHelp(for:)` so route errors expose the effective destination. The existing `setVolume` clears mute, so dragging a muted app's slider also unmutes it in this panel; keep that same behavior. Do not create a panel-specific audio setting cache or mutate macOS system volume.
 
-- [ ] Run `swift build`, then `swift test --filter MixerRoutingTests`. These checks verify compilation and the existing routing contract, not native menu tracking. Task 5 supplies visual and interaction evidence; do not add tests that merely assert the SwiftUI hierarchy matches its implementation.
-- [ ] Review and commit the two files with message `Add native compact per-app mixer panel`.
+- [x] Run `swift build`, then `swift test --filter MixerRoutingTests`. These checks verify compilation and the existing routing contract, not native menu tracking. Task 5 supplies visual and interaction evidence; do not add tests that merely assert the SwiftUI hierarchy matches its implementation.
+- [x] Review and commit the two files with message `Add native compact per-app mixer panel`.
 
 ## Task 4: Integrate the menu-bar scene and window lifecycle
 
@@ -329,7 +329,7 @@ The text state explicitly identifies mute and the existing output label identifi
 - Produces: `MenuBarSceneContent(model:permission:navigation:)`, a bridge that owns no audio/browser services.
 - Stable scene ID: `mixer`.
 
-- [ ] Implement the bridge below:
+- [x] Implement the bridge below:
 
 ```swift
 import AppKit
@@ -362,7 +362,7 @@ struct MenuBarSceneContent: View {
 }
 ```
 
-- [ ] Add the shared navigation object beside the existing app-owned models; replace `WindowGroup("WinMix")` with `Window("WinMix", id: "mixer")`, retaining the existing size, hidden-title-bar styling, permission branching and active-notification refresh. Pass the shared navigation into `MixerView`:
+- [x] Add the shared navigation object beside the existing app-owned models; replace `WindowGroup("WinMix")` with `Window("WinMix", id: "mixer")`, retaining the existing size, hidden-title-bar styling, permission branching and active-notification refresh. Pass the shared navigation into `MixerView`:
 
 ```swift
 @StateObject private var navigation = AppNavigation()
@@ -383,12 +383,12 @@ MenuBarExtra {
 
 Keep `Main.main()` and its `--probe` branch intact. Do not instantiate `ChromeTabModel` in the menu scene: the existing app-owned one keeps tab controls alive in the main mixer and setup sheet.
 
-- [ ] Run `swift build` and `swift test --filter AppNavigationTests`. Check that no newer-than-14.4 API has entered the scene code. Use native `Window` single-window semantics rather than an unbounded identified `WindowGroup`.
+- [x] Run `swift build` and `swift test --filter AppNavigationTests`. Check that no newer-than-14.4 API has entered the scene code. Use native `Window` single-window semantics rather than an unbounded identified `WindowGroup`.
 - [ ] On an isolated/test app session, close the main window, open the menu panel, click `Open Mixer` five times, minimize and reopen, then close and click the Dock icon. Confirm one intended mixer window and retained main-window size/appearance. Keep any running personal audio app untouched.
 - [ ] Test `Settings…` while another app is frontmost and with the mixer closed. It must bring the existing Settings window forward. Test `Chrome Setup…` with the mixer closed and while already open; dismiss the sheet, close/reopen the mixer, and verify no stale request reopens it. With permission denied, navigation remains queued until the existing permission screen yields to the mixer.
 - [ ] Open/close the panel repeatedly without changing controls. Using the isolated routing fixture or private probe session, confirm `activeTapCount` and existing route generations do not change simply from presenting views. Never infer audio continuity from a static screenshot.
 - [ ] Verify the actual native icon tooltip/accessibility name, Escape, outside-click dismissal, slider dragging and nested output-picker behavior. These are release gates; repair scene integration if native `MenuBarExtra` behavior differs on a supported macOS. Do not silently ship a nonfunctional menu or add a global event monitor to force dismissal.
-- [ ] Review and commit the two files with message `Integrate persistent menu-bar mixer and single-window navigation`.
+- [x] Review and commit the two files with message `Integrate persistent menu-bar mixer and single-window navigation`.
 
 ## Task 5: Render states, validate interactions and package the release
 
@@ -401,7 +401,7 @@ Keep `Main.main()` and its `--probe` branch intact. Do not instantiate `ChromeTa
 - Consumes: `MixerModel(previewRows:settings:boostEnabled:outputName:outputDevices:)`, Task 3 panel with an explicit permission status and no-op navigation closures, the existing local `render(_:size:name:)` helper in `Probe.renderPreview`.
 - Produces: `--probe --render-preview` PNGs for menu states plus evidence of actual native scene interaction.
 
-- [ ] Extend `renderPreview` after its existing render helper. Retain all existing main-window and setup renders. The following creates normal, Boost, empty, denied, disconnected and error states without a live tap or preference write:
+- [x] Extend `renderPreview` after its existing render helper. Retain all existing main-window and setup renders. The following creates normal, Boost, empty, denied, disconnected and error states without a live tap or preference write:
 
 ```swift
 let speakers = AudioOutputDevice(uid: "preview-speakers", name: "MacBook Pro Speakers")
@@ -461,7 +461,7 @@ for dark in [false, true] {
                  name: "menu-many-long-\(dark ? "dark" : "light")") else { return 1 }
 }
 ```
-- [ ] Run these commands sequentially; record exit status and failures in the evidence document. Re-run a failed check after a relevant fix, not as a blind loop:
+- [x] Run these commands sequentially; record exit status and failures in the evidence document. Re-run a failed check after a relevant fix, not as a blind loop:
 
 ```sh
 swift test
@@ -471,7 +471,7 @@ swift build -c release
 .build/release/WinMix --probe --render-preview /tmp/winmix-menu-preview
 ```
 
-- [ ] Inspect PNGs for both native color schemes and both existing main-window skins. Check readable labels/percentages, visible footer/focus, disconnected-output text, permission/error layout and truncation. Use a render session with no live audio; do not launch a second production mixer over the owner's existing instance.
+- [x] Inspect PNGs for both native color schemes and both existing main-window skins. Check readable labels/percentages, visible footer/focus, disconnected-output text, permission/error layout and truncation. Use a render session with no live audio; do not launch a second production mixer over the owner's existing instance.
 - [ ] Complete the native matrix and record each outcome in `docs/menu-bar-validation.md`:
 
 | Check | Required outcome |
@@ -492,9 +492,9 @@ swift build -c release
 
 Real personal-device switching, host replacement and changing privacy permission are not required test side effects. When hardware or minimum-OS testing is unavailable, state exactly what was not exercised and do not mark that gate passed.
 
-- [ ] Add README usage text explaining the menu icon, per-app controls, keeping WinMix running after window close, quitting through the footer, shared Chrome output and detailed tab controls in the main window. Document that the mini panel follows system appearance while the main mixer retains Ceramic/Retro. Link the new validation document.
-- [ ] Read the prerequisite's final `Resources/Info.plist` version before choosing the next release number/build. Record the chosen values in the validation document. Preserve `com.rogerleite.MacVolume`, `AppIcon` and macOS `14.4`; do not revert the prerequisite's release metadata.
-- [ ] Preserve any existing destination bundle before packaging: create a uniquely named sibling backup with `ditto` and verify it exists before invoking the build script, which deletes its output path. Prefer a new task-specific path `build/WinMix-menu-bar.app` for initial packaging:
+- [x] Add README usage text explaining the menu icon, per-app controls, keeping WinMix running after window close, quitting through the footer, shared Chrome output and detailed tab controls in the main window. Document that the mini panel follows system appearance while the main mixer retains Ceramic/Retro. Link the new validation document.
+- [x] Read the prerequisite's final `Resources/Info.plist` version before choosing the next release number/build. Record the chosen values in the validation document. Preserve `com.rogerleite.MacVolume`, `AppIcon` and macOS `14.4`; do not revert the prerequisite's release metadata.
+- [x] Preserve any existing destination bundle before packaging: create a uniquely named sibling backup with `ditto` and verify it exists before invoking the build script, which deletes its output path. Prefer a new task-specific path `build/WinMix-menu-bar.app` for initial packaging:
 
 ```sh
 ./scripts/build-app.sh build/WinMix-menu-bar.app
@@ -503,8 +503,8 @@ codesign --verify --deep --strict build/WinMix-menu-bar.app
 
 Do not run the script against an installed/working destination until its backup is verified. Building at a new path must not rewrite the registered Chrome host path. Quit the old instance before a native launch check; preserve all personal settings and host registration.
 
-- [ ] Record final commit, macOS/build version, commands/results, image paths, native checks performed, bundle path, backup path if used, signing result, and unperformed manual/hardware checks. Distinguish packaged locally from installed or published. Do not claim menu tracking or audio continuity was verified solely from PNGs or unit tests.
-- [ ] Review the final implementation diff against the approved spec; fix material gaps before delivery. Commit only menu-bar implementation/docs/release changes with message `Validate and package menu-bar mini mixer`. Do not push or publish unless separately requested.
+- [x] Record final commit, macOS/build version, commands/results, image paths, native checks performed, bundle path, backup path if used, signing result, and unperformed manual/hardware checks. Distinguish packaged locally from installed or published. Do not claim menu tracking or audio continuity was verified solely from PNGs or unit tests.
+- [x] Review the final implementation diff against the approved spec; fix material gaps before delivery. Commit only menu-bar implementation/docs/release changes with message `Validate and package menu-bar mini mixer`. Do not push or publish unless separately requested.
 
 ## Plan self-review / acceptance mapping
 
@@ -520,7 +520,7 @@ Do not run the script against an installed/working destination until its backup 
 | Preserve user audio/settings/host registration | Global constraints, Task 1 fake boundaries, Task 5 packaging procedure |
 | Regression checks and locally reviewable bundle | Task 5 tests, release build, signing and evidence |
 
-No feature source code was changed, no tests were run and no bundle was built while writing this plan. Checkbox completion must reflect the later implementation, not this planning pass.
+Planning originally changed no feature source. The later implementation ran 57 Swift tests, extension/Python checks, native browser/audio integration, native diagnostic-window interactions and release packaging. Actual status-item popover interaction is unverified because the UI tool could not expose the macOS status item. Many-app fixtures are implemented and rendered; their native many-app interaction check remains open. These unchecked checks are not implementation omissions or passing release gates. Final evidence: `docs/menu-bar-validation.md`.
 
 ## Platform references
 

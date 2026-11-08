@@ -2,7 +2,7 @@
 
 Date: 2026-11-08
 
-Status: Design approved by the owner on 2026-11-08, followed by authorization to write the detailed implementation plan. Implementation is outside the current planning request. The selected scope is volume, mute and output per app, with detailed Chrome-tab controls remaining in the main window.
+Status: Design approved by the owner on 2026-11-08, followed by authorization to write the detailed implementation plan. The owner subsequently requested implementation of all three open items. Source is implemented through `cfeb7b8`; local candidate and outstanding manual checks are recorded in `docs/menu-bar-validation.md`. The selected scope is volume, mute and output per app, with detailed Chrome-tab controls remaining in the main window.
 
 ## Context and dependencies
 

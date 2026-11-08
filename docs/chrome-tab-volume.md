@@ -1,6 +1,6 @@
 # Volume individual por aba do Chrome
 
-App 0.7.1 e extensão 0.7.0, 2026-11-07. Requer macOS 14.4+ e Chrome 116+.
+App 0.8.0 e extensão 0.7.0, 2026-11-08. Requer macOS 14.4+ e Chrome 116+.
 
 O botão **?** no cabeçalho abre um guia de instalação dentro do app, com atalhos para
 `chrome://extensions` e a pasta da extensão. Cole o ID e clique em **Connect browser**;
@@ -13,7 +13,7 @@ continua como mestre de todas as abas, inclusive áudio sem suporte ao ganho ind
 
 ## Atualizar a instalação existente
 
-1. Abra o WinMix 0.7.1. O app novo deve estar aberto antes da extensão nova.
+1. Encerre o MacVolume/WinMix anterior e abra o WinMix 0.8.0. O app novo deve estar aberto antes da extensão nova.
 2. Em `chrome://extensions`, recarregue **WinMix Tabs**, na pasta originalmente instalada.
 3. Autorize o novo acesso a sites HTTP/HTTPS e aos metadados das abas quando o Chrome pedir.
 4. Inicie ou continue a reprodução. Se uma página antiga ainda não aparecer ou pedir recarga,

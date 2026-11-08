@@ -3,6 +3,19 @@
 Per-app and per-tab volume control for macOS 14.4+, built on Core Audio process taps.
 macOS only, despite the name.
 
+Version **0.8.0** adds a menu-bar mini mixer, independent output devices per app,
+and browser connection from the setup sheet without Terminal.
+
+Click the slider icon in the Mac's menu bar to adjust each app's volume, mute and output,
+or toggle Boost. **Open Mixer**, **Settings…** and **Chrome Setup…** open the full controls.
+Detailed Chrome tab playback stays in the main mixer. The mini panel follows macOS light/dark
+appearance; the main window keeps its Ceramic/Retro style. Both surfaces use the same live
+settings. Closing the window keeps WinMix and its audio controls running; **Quit WinMix**
+stops them. The Dock icon and launch-at-login behavior remain available.
+
+See [routing/setup validation](docs/routing-and-setup-validation.md) and
+[menu-bar/release validation](docs/menu-bar-validation.md) for checks and manual limits.
+
 The name and retro look are a tribute to Winamp. WinMix is an independent project, not
 affiliated with or endorsed by Winamp. It was previously called MacVolume, and older validation
 records in `docs/` keep that name.
@@ -14,7 +27,7 @@ compatible players individual volume, mute and play/pause controls. Paused tabs 
 available. The slider stays responsive during dragging and confirms the last requested gain.
 Chrome's app slider remains the master for every tab. No per-tab activation is required.
 
-**Update an existing installation:** reopen WinMix 0.7.1, reload **WinMix Tabs** at
+**Update an existing installation:** quit the older MacVolume/WinMix instance, open WinMix 0.8.0, reload **WinMix Tabs** at
 `chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
 and HTTP/HTTPS host access so it can discover audio tabs and control their players.
 It does not capture audio or send page content to external services. Existing pages may
@@ -94,8 +107,8 @@ switches between Ceramic and the original **Retro** skin and remembers your choi
 appearance keeps the same live audio controls and volume settings.
 
 The **?** button opens an in-app Chrome extension installation guide, with shortcuts to the
-bundled extension folder, Chrome's extensions page, and a safely quoted connection command for
-your extension ID and current app path. The same guide is available in Settings and Chrome Setup.
+bundled extension folder, Chrome's extensions page, and **Connect browser** for your extension
+ID and current app path. The same guide is available in Settings and Chrome Setup.
 Browser rows show distinct YouTube and YouTube Music icons in either appearance, with a globe
 for other sites.
 
@@ -123,6 +136,13 @@ To check the look without opening the app or touching audio, render the window t
 ```sh
 .build/release/WinMix --probe --render-preview /tmp/mixer
 ```
+
+This also renders the mini panel in light/dark, empty, denied, muted, Boost, output fallback,
+error and many-app states. For native UI diagnostics with fake app rows, no sockets, no audio
+and no saved-setting writes, launch with `--preview-ui`; its **Preview → Open Mini Mixer Preview**
+command opens the exact panel in a regular diagnostic window. `--preview-many` and
+`--preview-denied` select additional fixtures. Browser registration in that mode goes to a
+disposable directory; `--preview-host-directory PATH` chooses an explicit test directory.
 
 ## How it works
 

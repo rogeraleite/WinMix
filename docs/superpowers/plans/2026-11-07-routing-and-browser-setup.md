@@ -35,8 +35,8 @@ A and B can run concurrently with disjoint write ownership. Do not run overlappi
 - [x] Run separate fresh routing/setup reviews; cross-fix or explicitly assign findings with ownership handoff, then verify fixes and final interfaces.
 - [x] Extend/render previews for available, selected and fallback devices in both styles and native setup states.
 - [x] Run isolated routing/browser validation where available, preserving personal outputs, saved levels and host registration.
-- [ ] Update version/docs, create and verify the signed bundle, back up/update the local app and verify native UI without changing user-selected audio destinations.
-- [ ] Record final evidence, remaining limits and actual local availability, then commit only task-owned files.
+- [x] Update version/docs, create and verify the signed local candidate, preserve the previous local app and verify the supported native setup/panel UI without changing user-selected audio destinations. Actual status-item and hardware checks remain listed in the combined evidence.
+- [x] Record final evidence, remaining limits and actual local availability, then commit only task-owned files.
 
 2026-11-08: owner requested all three open items in sequence, including the separately approved
 menu-bar mixer. Routing/setup source, 55 Swift tests and independent review close before the
