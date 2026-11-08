@@ -3,7 +3,15 @@ import SwiftUI
 struct AppOutputMenu: View {
     @ObservedObject var model: MixerModel
     let row: AppGroup
-    let appearance: MixerAppearance
+    var appearance: MixerAppearance? = nil
+
+    private var labelColor: Color {
+        switch appearance {
+        case .ceramic: return Ceramic.secondary
+        case .retro: return .white.opacity(0.65)
+        case nil: return Color(nsColor: .secondaryLabelColor)
+        }
+    }
 
     private var selection: Binding<String> {
         Binding(get: { model.setting(for: row).outputUID ?? "" },
@@ -31,7 +39,7 @@ struct AppOutputMenu: View {
                 Text(model.outputLabel(for: row)).lineLimit(1).truncationMode(.middle)
             }
             .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(appearance == .ceramic ? Ceramic.secondary : .white.opacity(0.65))
+            .foregroundStyle(labelColor)
         }
         .menuStyle(.borderlessButton)
         .controlSize(.mini)
