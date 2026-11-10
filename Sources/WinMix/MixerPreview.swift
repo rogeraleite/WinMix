@@ -1,9 +1,25 @@
 import Foundation
 import SwiftUI
+import ChromeSupport
 
 /// Explicit UI diagnostic fixture: no process observer, socket, defaults or real audio.
 @MainActor
 enum MixerPreview {
+    static var appearance: MixerAppearance {
+        let arguments = CommandLine.arguments
+        return arguments.firstIndex(of: "--preview-appearance")
+            .flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+            .flatMap(MixerAppearance.init(rawValue:)) ?? .stickerCase
+    }
+
+    static func chrome() -> ChromeTabModel {
+        guard CommandLine.arguments.contains("--preview-tabs") else {
+            return ChromeTabModel(previewTabs: [], connected: false)
+        }
+        let data = Data(#"{"version":1,"type":"state","session":"preview","tabs":[{"id":41,"title":"Lo-fi radio","domain":"youtube.com","audible":true,"controlled":true,"volume":0.45,"muted":false,"canMute":true,"playing":true,"canPlay":true,"canPause":true,"canNext":true},{"id":42,"title":"Evening mix","domain":"music.youtube.com","audible":false,"controlled":true,"volume":0.8,"muted":false,"canMute":true,"playing":false,"canPlay":true,"canPause":true,"canPrevious":true,"canNext":true,"canShuffle":true,"shuffleEnabled":false}]}"#.utf8)
+        return ChromeTabModel(previewTabs: (try? BridgeMessage.decode(data).tabs) ?? [], connected: true)
+    }
+
     static let devices = [AudioOutputDevice(uid: "preview-speakers", name: "MacBook Pro Speakers"),
                           AudioOutputDevice(uid: "preview-headphones", name: "USB Headphones")]
 
@@ -41,7 +57,7 @@ struct MixerPreviewApp: App {
     @StateObject private var permission = PermissionModel(readStatus: {
         CommandLine.arguments.contains("--preview-denied") ? .denied : .authorized
     })
-    @StateObject private var chrome = ChromeTabModel(previewTabs: [], connected: false)
+    @StateObject private var chrome = MixerPreview.chrome()
     @StateObject private var navigation = AppNavigation()
     @StateObject private var loginItem = LoginItemModel()
     private let hostDirectory: URL
@@ -60,13 +76,13 @@ struct MixerPreviewApp: App {
                 if permission.status == .denied {
                     PermissionView(permission: permission)
                 } else {
-                    MixerView(model: model, chrome: chrome, appearanceOverride: .ceramic,
+                    MixerView(model: model, chrome: chrome, appearanceOverride: MixerPreview.appearance,
                               navigation: navigation, setupHostDirectory: hostDirectory)
                 }
             }
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 510, height: 420)
+        .defaultSize(width: 600, height: 620)
         .windowResizability(.contentMinSize)
         .commands { MixerPreviewCommands() }
 

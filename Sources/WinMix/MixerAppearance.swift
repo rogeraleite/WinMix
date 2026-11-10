@@ -1,10 +1,24 @@
 import SwiftUI
 
 enum MixerAppearance: String, CaseIterable, Identifiable {
-    case ceramic, retro
+    case ceramic, retro, stickerCase
 
     var id: String { rawValue }
-    var title: String { self == .ceramic ? "Ceramic" : "Retro" }
+    var title: String {
+        switch self {
+        case .ceramic: return "Ceramic"
+        case .retro: return "Retro"
+        case .stickerCase: return "Sticker Case"
+        }
+    }
+
+    var headerColor: Color {
+        switch self {
+        case .ceramic: return Ceramic.secondary
+        case .retro: return .white.opacity(0.7)
+        case .stickerCase: return StickerCase.ink
+        }
+    }
 }
 
 enum Ceramic {
@@ -32,7 +46,7 @@ enum MixerControlHelp {
     }
 }
 
-/// Both themes expose the same quiet, keyboard-accessible header actions.
+/// All themes expose the same keyboard-accessible header actions.
 struct MixerHeaderControls: View {
     @Binding var appearance: MixerAppearance
     let showSetup: () -> Void
@@ -50,27 +64,43 @@ struct MixerHeaderControls: View {
                     }
                 }
             } label: {
-                Image(systemName: "paintpalette")
-                    .frame(width: 26, height: 28)
+                headerGlyph("paintpalette")
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("Appearance: \(appearance.title). Click to choose Ceramic or Retro.")
+            .frame(width: appearance == .stickerCase ? 28 : nil, height: appearance == .stickerCase ? 28 : nil)
+            .background {
+                if appearance == .stickerCase {
+                    RoundedRectangle(cornerRadius: 5).fill(StickerCase.cream)
+                        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(StickerCase.ink, lineWidth: 1.5))
+                }
+            }
+            .help("Appearance: \(appearance.title). Click to choose \(MixerAppearance.allCases.map(\.title).joined(separator: ", ")).")
             .accessibilityLabel("Change appearance")
             .accessibilityValue(appearance.title)
 
             Button(action: showSetup) {
-                Image(systemName: "questionmark.circle")
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+                headerGlyph(appearance == .stickerCase ? "questionmark" : "questionmark.circle")
             }
             .buttonStyle(.plain)
             .help("Install browser tab controls")
             .accessibilityLabel("Help installing browser tab controls")
         }
         .font(.system(size: 14))
-        .foregroundStyle(appearance == .ceramic ? Ceramic.secondary : Color.white.opacity(0.7))
+        .foregroundStyle(appearance.headerColor)
+    }
+
+    private func headerGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .frame(width: 28, height: 28)
+            .background {
+                if appearance == .stickerCase {
+                    RoundedRectangle(cornerRadius: 5).fill(StickerCase.cream)
+                        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(StickerCase.ink, lineWidth: 1.5))
+                }
+            }
+            .contentShape(Rectangle())
     }
 }
 

@@ -7,12 +7,18 @@ struct MixerView: View {
     var appearanceOverride: MixerAppearance? = nil
     @ObservedObject var navigation = AppNavigation()
     var setupHostDirectory = BrowserBridgeInstaller.defaultHostDirectory
-    @AppStorage("mixerAppearance") private var savedAppearance = MixerAppearance.ceramic
+    @AppStorage("mixerAppearance") private var savedAppearance = MixerAppearance.stickerCase
+    @State private var previewAppearance: MixerAppearance?
     @State private var showingSetup = false
 
-    private var appearance: MixerAppearance { appearanceOverride ?? savedAppearance }
+    private var appearance: MixerAppearance {
+        appearanceOverride.map { previewAppearance ?? $0 } ?? savedAppearance
+    }
     private var selection: Binding<MixerAppearance> {
-        Binding(get: { appearance }, set: { if appearanceOverride == nil { savedAppearance = $0 } })
+        Binding(get: { appearance }, set: {
+            if appearanceOverride == nil { savedAppearance = $0 }
+            else { previewAppearance = $0 }
+        })
     }
 
     var body: some View {
@@ -22,6 +28,8 @@ struct MixerView: View {
                 CeramicMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
             case .retro:
                 RetroMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
+            case .stickerCase:
+                StickerCaseMixerView(model: model, chrome: chrome, appearance: selection, showSetup: { showingSetup = true })
             }
         }
         .sheet(isPresented: $showingSetup) { BrowserSetupView(chrome: chrome, hostDirectory: setupHostDirectory) }

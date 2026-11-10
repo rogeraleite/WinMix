@@ -26,7 +26,7 @@ struct BrowserTabIcon: View {
                     .frame(width: 23, height: 16)
             } else {
                 Image(systemName: "globe").font(.system(size: 17))
-                    .foregroundStyle(appearance == .ceramic ? Ceramic.secondary : .white.opacity(0.65))
+                    .foregroundStyle(appearance.headerColor)
             }
         }
         .frame(width: 25, height: 24)

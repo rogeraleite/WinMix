@@ -9,6 +9,7 @@ struct AppOutputMenu: View {
         switch appearance {
         case .ceramic: return Ceramic.secondary
         case .retro: return .white.opacity(0.65)
+        case .stickerCase: return StickerCase.ink
         case nil: return Color(nsColor: .secondaryLabelColor)
         }
     }
@@ -43,6 +44,14 @@ struct AppOutputMenu: View {
         }
         .menuStyle(.borderlessButton)
         .controlSize(.mini)
+        .padding(.horizontal, appearance == .stickerCase ? 5 : 0)
+        .padding(.vertical, appearance == .stickerCase ? 3 : 0)
+        .background {
+            if appearance == .stickerCase {
+                RoundedRectangle(cornerRadius: 4).fill(StickerCase.cream)
+                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(StickerCase.ink, lineWidth: 1.2))
+            }
+        }
         .help(model.outputHelp(for: row))
         .accessibilityLabel("\(row.identity.name) output device")
         .accessibilityValue(model.outputLabel(for: row))

@@ -256,11 +256,21 @@ enum Probe {
         }
         for appearance in MixerAppearance.allCases {
             for (name, model, chrome) in previews {
-                let size = NSSize(width: appearance == .ceramic ? 510 : 480, height: chrome == nil ? 360 : 660)
+                let width: CGFloat = appearance == .stickerCase ? 600 : appearance == .ceramic ? 510 : 480
+                let height: CGFloat = appearance == .stickerCase ? (chrome == nil ? 530 : 820) : (chrome == nil ? 360 : 660)
+                let size = NSSize(width: width, height: height)
                 guard render(MixerView(model: model, chrome: chrome, appearanceOverride: appearance),
                              size: size, name: "\(appearance.rawValue)-\(name)") else { return 1 }
             }
         }
+        let errorModel = MixerPreview.model(many: true)
+        errorModel.error = "Could not move the test app to USB audio. Still using MacBook Pro Speakers."
+        guard render(MixerView(model: errorModel, chrome: chrome, appearanceOverride: .stickerCase),
+                     size: NSSize(width: 560, height: 500), name: "stickerCase-compact-long-error"),
+              render(MixerView(model: states[0].1, chrome: chrome, appearanceOverride: .stickerCase),
+                     size: NSSize(width: 560, height: 820), name: "stickerCase-compact-chrome"),
+              render(MixerView(model: states[2].1, chrome: chrome, appearanceOverride: .stickerCase),
+                     size: NSSize(width: 600, height: 530), name: "stickerCase-browser-without-master") else { return 1 }
         guard render(BrowserSetupView(chrome: chrome), size: NSSize(width: 560, height: 650), name: "browser-setup") else { return 1 }
         let normalMenu = MixerPreview.model()
         normalMenu.boostEnabled = false
