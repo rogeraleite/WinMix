@@ -1,258 +1,148 @@
 # WinMix
 
-Per-app and per-tab volume control for macOS 14.4+, built on Core Audio process taps.
-macOS only, despite the name.
+**Per-app and per-tab volume control for macOS.** Turn Chrome down to 30%, mute Teams,
+send Music to your speakers while calls stay on your AirPods, and control each YouTube tab
+on its own — without installing an audio driver.
 
-Version **0.8.0** adds a menu-bar mini mixer, independent output devices per app,
-and browser connection from the setup sheet without Terminal.
+WinMix is a native Swift app built on Core Audio process taps (macOS 14.4+). It is macOS only,
+despite the name.
 
-Click the slider icon in the Mac's menu bar to adjust each app's volume, mute and output,
-or toggle Boost. **Open Mixer**, **Settings…** and **Chrome Setup…** open the full controls.
-Detailed Chrome tab playback stays in the main mixer. The mini panel follows macOS light/dark
-appearance; the main window keeps its Ceramic/Retro style. Both surfaces use the same live
-settings. Closing the window keeps WinMix and its audio controls running; **Quit WinMix**
-stops them. The Dock icon and launch-at-login behavior remain available.
+<p align="center">
+  <img src="docs/images/sticker-case.png" alt="WinMix main window in the Sticker Case appearance, showing Chrome with individual tab controls, Teams, Music and WhatsApp" width="420">
+</p>
 
-See [routing/setup validation](docs/routing-and-setup-validation.md) and
-[menu-bar/release validation](docs/menu-bar-validation.md) for checks and manual limits.
+## Features
 
-The name and retro look are a tribute to Winamp. WinMix is an independent project, not
-affiliated with or endorsed by Winamp. It was previously called MacVolume, and older validation
-records in `docs/` keep that name.
+- **Volume and mute per app.** Every app that plays audio gets its own row. Helper processes
+  (Chrome Helper, WebKit GPU, …) are grouped under the app that owns them.
+- **Boost up to 200%**, with a soft clipper so loud sources don't distort.
+- **Output device per app.** Pin any app to a specific output without changing the Mac's system
+  output. If that device disconnects, the app falls back to the system output and returns when
+  the device reconnects.
+- **Individual Chrome tabs.** With the companion extension, every audio/video tab gets its own
+  volume, mute and play/pause. YouTube and YouTube Music also get previous, next and shuffle.
+  Chrome's app slider stays the master for all tabs.
+- **Menu-bar mini mixer** for quick changes; the full mixer window for everything else.
+- **Three appearances:** Sticker Case, Ceramic and Retro (a nod to classic desktop media players).
+- **Remembers your settings** per app (by bundle ID) and can launch at login.
+- **No virtual audio driver, no kernel extension.** WinMix uses Apple's public process-tap API.
 
-## Independent Chrome tab controls
+| Ceramic | Retro | Menu bar |
+|---|---|---|
+| <img src="docs/images/ceramic.png" alt="Ceramic appearance" width="260"> | <img src="docs/images/retro.png" alt="Retro appearance" width="260"> | <img src="docs/images/menu-bar-dark.png" alt="Menu-bar mini mixer in dark mode" width="220"> |
 
-WinMix automatically discovers audio/video tabs on HTTP and HTTPS sites and gives
-compatible players individual volume, mute and play/pause controls. Paused tabs remain
-available. The slider stays responsive during dragging and confirms the last requested gain.
-Chrome's app slider remains the master for every tab. No per-tab activation is required.
+## Requirements
 
-**Update an existing installation:** quit the older MacVolume/WinMix instance, open WinMix 0.8.0, reload **WinMix Tabs** at
-`chrome://extensions` and approve the new access to sites. Version 0.5.0 requests `tabs`
-and HTTP/HTTPS host access so it can discover audio tabs and control their players.
-It does not capture audio or send page content to external services. Existing pages may
-need one reload if site access was previously withheld. Keep the original extension folder
-and ID so the native bridge registration remains valid.
+- macOS **14.4** or later (Core Audio process taps)
+- To build: Xcode 16 or the Swift 6 toolchain
+- For per-tab control: Google Chrome 116 or later
 
-The controller adjusts HTML audio/video players. Internal Chrome pages, the Web Store,
-files, and audio paths without a compatible player do not get a working volume slider;
-where possible the app reports the limitation and offers tab mute. Arbitrary Web Audio
-output is not controlled by the HTML player gain.
+## Install
 
-For initial setup, open **? → Chrome Setup** in WinMix, open Chrome's extensions page,
-enable Developer mode and load the bundled **ChromeExtension** folder. Paste the extension's
-32-letter ID into the setup sheet and click **Connect browser**. Then click **Reconnect** in
-WinMix Tabs. No Terminal or Python is needed. The sheet prefills a valid saved registration
-and asks before replacing a different app path or ID. Saved registration and a live Chrome
-connection are reported separately.
-
-The original command-line installer remains available for development:
+There are no pre-built releases yet, so build from source:
 
 ```sh
-python3 scripts/install-chrome-bridge.py EXTENSION_ID --app "$PWD/build/WinMix.app"
-open build/WinMix.app
-```
-
-See the [setup guide](docs/chrome-tab-volume.md), [validation evidence](docs/chrome-tab-validation.md)
-and [live checks](docs/chrome-manual-validation.md). The app bundle includes the extension,
-native bridge and setup scripts.
-
-## Build and run
-
-```sh
+git clone https://github.com/rogeraleite/WinMix.git
+cd WinMix
 ./scripts/build-app.sh
 open build/WinMix.app
 ```
 
-On first use macOS asks for **System Audio Recording** access. If the meters stay at zero,
-check System Settings → Privacy & Security → Screen & System Audio Recording.
-The app is ad-hoc signed, so each rebuild resets this: the first tap after a rebuild takes
-3–4 s to start while macOS re-grants access. Later launches start at once. When testing, quit the
-running app and do one throwaway tap run after every rebuild: runs that built a second tap during
-that window, or started while the old build was still running, hung.
+Move `build/WinMix.app` to wherever it will live (for example `/Applications`) before enabling
+**Launch at login** in WinMix → Settings (⌘,), because macOS remembers the app's path.
 
-**Launch at login** is in WinMix → Settings (⌘,). macOS remembers the app's path, so turn it on
-from wherever the app will stay.
+On first use macOS asks for **System Audio Recording** access. If the level meters stay at zero,
+check System Settings → Privacy & Security → Screen & System Audio Recording. The build is
+ad-hoc signed, so macOS may ask again after each rebuild.
 
-Headless probe modes (results go to the `--log` file):
+## Usage
 
-```sh
-# Tap one process and log levels, latency and CPU
-open -n -W build/WinMix.app --args --probe --pid <pid> --gain 0.3 --seconds 5 --log /tmp/probe.log
-# Log the mixer's rows as apps start/stop playing; --volume sets command-line process rows only
-open -n build/WinMix.app --args --probe --watch 10 [--volume 0.3] --log /tmp/watch.log
-# List audio processes grouped by app (helpers under their app)
-open -n -W build/WinMix.app --args --probe --groups --log /tmp/groups.log
-# Start a tap, then add/remove a playing process on the running tap
-open -n -W build/WinMix.app --args --probe --pid <pid> --gain 0.3 --update-test --log /tmp/upd.log
-# Print the System Audio Recording permission status
-open -n build/WinMix.app --args --probe --permission --log /tmp/perm.log
-# Play a tapped process into a given device instead of the default output
-open -n -W build/WinMix.app --args --probe --pid <pid> --output <device uid> --log /tmp/probe.log
-# Move a running tap between two devices and back
-open -n build/WinMix.app --args --probe --pid <pid> --move-test --output <uid> --output2 <uid> --log /tmp/move.log
-# Change the first device's sample rate and back under a running tap (restores it afterwards)
-open -n build/WinMix.app --args --probe --pid <pid> --rate-test --output <uid> --output2 <uid> --log /tmp/rate.log
-# Whole mixer on private settings: saved volume, device moves, stall, wake (<bundle id> must be playing)
-open -n build/WinMix.app --args --probe --mixer-test <bundle id> --output <uid> --output2 <uid> [--other-pid <pid>] [--skip-rate] --log /tmp/mixer.log
-# Register the login item, log the result and unregister it
-open -n build/WinMix.app --args --probe --login-item --log /tmp/login.log
-```
+Click the slider icon in the menu bar to change each app's volume, mute, output or Boost.
+**Open Mixer** opens the full window, including Chrome tabs and the appearance menu (palette icon).
+Closing the window keeps WinMix and its audio controls running; **Quit WinMix** stops them.
 
-## Look
+### Chrome tab control (optional)
 
-Version 0.6.0 defaults to **Ceramic**: porcelain surfaces, cobalt volume sliders, circular mute
-buttons and Chrome tabs grouped beneath their master. The small palette menu in the header
-switches between Ceramic and the original **Retro** skin and remembers your choice. Switching
-appearance keeps the same live audio controls and volume settings.
+1. In WinMix, open **? → Chrome Setup**.
+2. Open `chrome://extensions`, enable **Developer mode** and click **Load unpacked**. Choose the
+   bundled **ChromeExtension** folder (the setup sheet has a shortcut to it).
+3. Paste the extension's 32-letter ID into the setup sheet and click **Connect browser**.
+4. Click **Reconnect to WinMix** in the WinMix Tabs extension popup.
 
-The **?** button opens an in-app Chrome extension installation guide, with shortcuts to the
-bundled extension folder, Chrome's extensions page, and **Connect browser** for your extension
-ID and current app path. The same guide is available in Settings and Chrome Setup.
-Browser rows show distinct YouTube and YouTube Music icons in either appearance, with a globe
-for other sites.
+No Terminal is needed. Tabs that play audio or video on HTTP/HTTPS sites then appear
+automatically under the Chrome row.
 
-Retro keeps its gunmetal panels, scrolling dot-matrix display and segmented LED sliders
-(`Skin.swift`). The display holds still while the app is in the background. The original LED-case
-logo is drawn by `scripts/make-icon.py`, which writes `Resources/AppIcon.icns`; rerun it after changing it.
-Use `--style ceramic` to export the alternative speaker-cone icon.
-The same script exports the Chrome extension icons at 16, 32, 48 and 128 pixels. Use
-`python3 scripts/make-icon.py --chrome-only` to regenerate only those PNGs, then reload the
-unpacked extension in Chrome to refresh its toolbar and extension-manager icons.
+**Privacy:** the extension requests `tabs` and HTTP/HTTPS site access so it can find tabs that
+are playing and control their HTML audio/video players. It does not capture audio and does not
+send page content anywhere; it only talks to WinMix on your Mac through Chrome's Native Messaging.
 
-Version 0.7.0 adds **previous**, **next** and a confirmed **shuffle on/off** toggle for
-YouTube Music, plus previous/next where YouTube's player offers them. These controls appear
-in both styles when available. They use the site's queue and preserve the tab's volume/mute.
-Previous follows the website's behavior and may restart the current track. Reload the updated
-extension and existing YouTube pages once; other sites keep their existing playback controls.
-
-Version 0.7.1 makes control states explicit: **Shuffle on/off** appears in the tab status,
-and active shuffle has a highlighted button with a checkmark. Hover playback, mute, shuffle,
-track navigation, volume or Boost for the current state and the action a click will perform.
-Pending commands and disconnected browser controls explain their status in the tooltip.
-
-To check the look without opening the app or touching audio, render the window to PNGs:
-
-```sh
-.build/release/WinMix --probe --render-preview /tmp/mixer
-```
-
-This also renders the mini panel in light/dark, empty, denied, muted, Boost, output fallback,
-error and many-app states. For native UI diagnostics with fake app rows, no sockets, no audio
-and no saved-setting writes, launch with `--preview-ui`; its **Preview → Open Mini Mixer Preview**
-command opens the exact panel in a regular diagnostic window. `--preview-many` and
-`--preview-denied` select additional fixtures. Browser registration in that mode goes to a
-disposable directory; `--preview-host-directory PATH` chooses an explicit test directory.
+**Limits:** per-tab volume works for HTML `<audio>`/`<video>` players. Internal Chrome pages,
+the Web Store, local files and pure Web Audio output can't be turned down individually; WinMix
+says so and offers tab mute instead. Detailed guide (Portuguese):
+[docs/chrome-tab-volume.md](docs/chrome-tab-volume.md).
 
 ## How it works
 
-`AudioProcessMonitor` watches Core Audio's process list. `AppOwner` first uses an executable's
-enclosing app bundle (Chrome Helper → Chrome), so a browser launched from an editor still owns
-its audio. Shared services such as WebKit GPU use the app responsible for them through the
-private `responsibility_get_pid_responsible_for_pid`. `MixerModel` shows one row per app that is
-playing and runs one tap per app, covering all its processes, only while that app is away from 100%
-or muted. New helpers are added to the running tap as soon as they appear, before they play, so
-they never sound at full volume. A tapped app stays tapped while paused.
+`AudioProcessMonitor` watches Core Audio's process list, and `AppOwner` maps each process to the
+app responsible for it (Chrome Helper → Chrome; shared WebKit GPU processes → the app that uses
+them). `MixerModel` shows one row per playing app and runs a tap for an app only while it is away
+from 100%, muted, or pinned to a specific output.
 
-Boost (toolbar) lets sliders reach 200%; above 100% a soft clipper keeps samples below ±1.
+For each tapped app, `ProcessVolumeTap` creates a process tap with `.mutedWhenTapped` (the app's
+normal output goes silent while WinMix reads it), wraps it in a private aggregate device whose main
+sub-device is the chosen output, and in the IO callback copies tap → output multiplied by the gain.
+New helper processes join the running tap as soon as they appear, before they play, so they never
+sound at full volume.
 
-For each app, `ProcessVolumeTap` creates a tap with `.mutedWhenTapped` (the app's normal
-output goes silent while we read it), wraps it in a private aggregate device whose main sub-device
-is the default output, and in the IO callback copies tap → output multiplied by the gain. Mono
-outputs get both channels mixed.
+To change device, WinMix builds a complete new route (its own tap and aggregate), waits for its
+first IO callback and only then destroys the old one, so the app is never left playing unmuted.
+The same move rebuilds routes after wake, and a 3-second watchdog rebuilds any route whose IO has
+stopped.
 
-Each app row has an output selector in both Ceramic and Retro. Choose **System default** to
-follow the Mac, or pin that app to an available output. The selection is saved by device UID
-and app bundle ID. Chrome tabs share Chrome's app output. Selecting an app output does not
-change the Mac's system output. A selected device that disconnects falls back to the current
-system output, while keeping its saved choice, and returns automatically when it reconnects.
-The selector reports disconnected, connecting and retrying states, with the effective route
-in its tooltip. An explicit output uses a tap even at 100% volume.
+Measured on a MacBook Pro: gain applied exactly (out/in 0.300 at 30%), about 7 ms added latency,
+WinMix CPU 0.2–0.6%. Details in the [engineering log](docs/engineering-log.md).
 
-To change device, a tap builds a complete new route (its
-own tap and aggregate), waits for its first IO callback and only then destroys the old one, so the
-app is never left unread and playing at full volume. The same move rebuilds every route after wake,
-and a 3-second check rebuilds any route whose IO has stopped or retries one that failed to move.
+The Chrome extension (`Extensions/Chrome`) talks to the `ChromeBridge` Native Messaging host,
+which relays tab state and commands to the app over a local socket.
 
-Each app's volume, mute state and the Boost toggle are saved in UserDefaults, by bundle ID.
-Command-line processes aren't saved, since their `pid:` keys mean nothing after they exit.
+## Known limitations
 
-## Sprint 0 results (2026-11-03, MacBook Pro speakers, macOS 27.2)
+- A `coreaudiod` restart isn't handled yet; relaunch WinMix.
+- Builds are ad-hoc signed and not notarized.
+- Per-tab control is Chrome-only for now.
 
-| Check | Result |
-|---|---|
-| Gain applied | out/in peak ratio 0.300 at 30%, every second of the run |
-| Format | tap 48 kHz stereo Float32 → output 96 kHz; HAL resamples, 512 frames in = 512 out |
-| Added delay (device-reported estimate) | ≈ 7 ms |
-| CPU, WinMix | 0.2–0.6% |
-| CPU, coreaudiod | 7% → 8% steady state (one-time spike while creating the tap) |
-| By ear (voice pitch normal, no clicks) | _pending manual check_ |
+## Project layout
 
-## Sprint 1 results (2026-11-03)
+```
+Sources/WinMix/         macOS app (SwiftUI/AppKit, Core Audio taps, mixer model)
+Sources/ChromeSupport/  shared message protocol and local socket
+Sources/ChromeBridge/   Native Messaging host launched by Chrome
+Extensions/Chrome/      WinMix Tabs extension (Manifest V3)
+Tests/                  Swift, extension (Node) and installer (Python) tests
+scripts/                build, icon and bridge scripts
+docs/                   setup guides, validation records, engineering notes
+```
 
-| Check | Result |
-|---|---|
-| Row appears when an app starts playing | ~0.2 s after start |
-| Row disappears when the app exits | ~0.1 s after exit; its tap is destroyed with it |
-| Setting a row to 30% | creates one tap, no error; app's playback duration unchanged |
-| Permission check (private TCC API) | "not determined" after a rebuild, "authorized" once granted |
-| Mixer window, icons, mute button, permission screen | _pending manual check_ |
+## Contributing
 
-Finding: macOS 27.2 never sends a notification for `kAudioProcessPropertyIsRunningOutput`;
-playback start/stop arrives as `kAudioProcessPropertyIsRunning`, so the monitor listens to both.
+Issues and pull requests are welcome. Before opening a PR, run the test suites:
 
-## Sprint 2 results (2026-11-03)
+```sh
+swift test
+node --test Tests/ChromeExtension/*.test.mjs
+python3 -m unittest discover -s Tests -p 'test_*.py'
+```
 
-| Check | Result |
-|---|---|
-| Grouping on this Mac | Chrome 3 processes → 1 row, Teams 5 → 1, Claude/ChatGPT/VS Code helpers → their app, each WebKit GPU process → its app (Outlook, Google Drive, …) |
-| Add a playing process to a running tap | applied immediately, out/in 0.300 |
-| Remove a process from a running tap | applied within ~1.5 s |
-| Boost 1.8× | out/in 1.800 |
-| Soft clipper | identity below 0.9, slope 1.0 at the knee, never exceeds ±1 |
-| Browser row control, no full-volume blip on a new tab, boost by ear | _pending manual check_ |
+[docs/development.md](docs/development.md) covers headless probe modes for testing taps and
+devices, rendering UI previews without touching audio, and regenerating icons.
 
-Findings:
-- Updating a tap with a process that has already exited fails with `'!obj'`; the mixer then
-  rebuilds the tap, and retries a failed app whenever its process set changes.
-- With permission "not determined" taps still receive audio and macOS records the grant, so the
-  app only shows the permission screen when access is explicitly denied.
+## Name
 
-## Sprint 3 results (2026-11-04)
-
-Tested on the test devices below, never on the default output, because Chrome was playing through
-AirPods throughout. Signal checks read a short window after settling, using a −50 dB tone.
-
-| Check | Result |
-|---|---|
-| Saved volume at launch | applied 205–217 ms after launch, out/in 0.300 |
-| Move between devices (Background Music ↔ Microsoft Teams Audio) | out/in unchanged; main thread blocked 42–48 ms; longest IO gap ≤ 50 ms |
-| Device with its own input streams | fixed: out peak 0.0000 → 0.0015 at 50% |
-| Mono output | both channels: right-only 0.0030 → 0.0015 mixed |
-| Rate change on real hardware (speakers, 96 → 48 → 96 kHz) | signal in every 0.5 s sample, no rebuild needed |
-| Stopped IO | detected and rebuilt in 4.0–4.9 s, out/in 0.300 |
-| Wake (simulated notification) | routes rebuilt, longest IO gap 42–45 ms, out/in 0.300 |
-| Saved settings | volume and Boost persist; 100% entries and `pid:` rows aren't stored |
-| Login item | registers ("enabled") and unregisters on this ad-hoc build |
-| CPU with 2 taps | WinMix 0.39–0.44%; coreaudiod 5.9% → 9.5% in one sample, with Chrome also playing |
-| Real default-output change, real sleep/wake, AirPods call mode, login at boot, Settings window, mute restored after relaunch | _pending manual check_ |
-| No full-volume blip during a device change | _pending manual check_ (a tap reads audio before the mute, so meters can't show it) |
-
-Findings:
-- An aggregate's input list holds its output device's own input streams first and the tap last. The
-  render used to read from the front, so a device with an input played that instead of the app.
-- Destroying an aggregate stops its tap for any other aggregate sharing it: the survivor keeps
-  running but reads silence, about 0.5 s later. A peak over a long window hides this. That's why
-  each route has its own tap.
-- With the Background Music driver at 44.1 kHz (its app not running) a tap can read silence. It
-  didn't happen on the speakers or Teams Audio, so this looks like that driver, not WinMix.
-- A tap keeps its output device running even when the app is silent (seen on the speakers), so an
-  idle saved app should keep AirPods active while WinMix runs. In a single check, tapping a
-  process that wasn't playing added no sleep assertion.
-
-Known limit: a `coreaudiod` restart isn't handled (relaunch the app).
+The name and Retro look are a tribute to Winamp. WinMix is an independent project, not affiliated
+with or endorsed by Winamp. It was previously called MacVolume; older validation records in
+`docs/` keep that name.
 
 ## License
 
-Copyright (C) 2026 Roger Leite. WinMix is free software under the GNU General Public License
-version 3. See [LICENSE](LICENSE).
+Copyright (C) 2026 Roger Leite. WinMix is free software under the
+[GNU General Public License v3.0](LICENSE).

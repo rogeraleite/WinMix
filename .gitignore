@@ -3,3 +3,4 @@ build/
 .swiftpm/
 __pycache__/
 output/
+.DS_Store
